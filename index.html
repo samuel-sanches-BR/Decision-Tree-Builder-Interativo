@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Tree Builder Interativo</title>
+    
+    <!-- KaTeX para fórmulas matemáticas -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>🌳 Decision Tree Builder</h1>
+        <p class="subtitle">Aprenda como árvores de decisão funcionam — passo a passo</p>
+    </header>
+
+    <main class="container">
+        <!-- Painel de Controle -->
+        <section class="control-panel">
+            <div class="control-group">
+                <label for="criterion">Critério de Split:</label>
+                <select id="criterion">
+                    <option value="gini">Gini Impurity</option>
+                    <option value="entropy">Entropia (Information Gain)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="maxDepth">Profundidade Máxima: <span id="depthValue">3</span></label>
+                <input type="range" id="maxDepth" min="1" max="6" value="3">
+            </div>
+
+            <div class="control-group">
+                <label for="minSamples">Mín. Amostras por Folha:</label>
+                <input type="number" id="minSamples" value="2" min="1" max="10">
+            </div>
+
+            <div class="control-group">
+                <label>Dataset:</label>
+                <div class="dataset-buttons">
+                    <button data-dataset="moon">Moons</button>
+                    <button data-dataset="circle">Circles</button>
+                    <button data-dataset="linear">Linear Separable</button>
+                    <button id="uploadBtn">Upload CSV</button>
+                </div>
+                <input type="file" id="csvUpload" accept=".csv" hidden>
+            </div>
+
+            <button id="trainBtn" class="primary-btn">🔄 Treinar Árvore</button>
+            <button id="stepBtn" class="secondary-btn">▶️ Passo a Passo</button>
+        </section>
+
+        <!-- Área de Visualização -->
+        <section class="visualization-area">
+            <div class="plot-container">
+                <div id="decisionBoundary"></div>
+                <div class="plot-caption">Fronteira de Decisão e Dados</div>
+            </div>
+            
+            <div class="tree-container">
+                <div id="treeViz"></div>
+                <div class="plot-caption">Estrutura da Árvore</div>
+            </div>
+        </section>
+
+        <!-- Painel de Cálculos -->
+        <section class="calculations-panel">
+            <h3>📐 Cálculos Detalhados</h3>
+            <div id="calculationLog" class="calculation-log">
+                <p class="placeholder">Selecione um dataset e clique em "Treinar" para ver os cálculos...</p>
+            </div>
+            
+            <div id="formulaDisplay" class="formula-box">
+                <!-- Fórmulas KaTeX serão inseridas aqui -->
+            </div>
+        </section>
+
+        <!-- Métricas -->
+        <section class="metrics-panel">
+            <h3>📊 Métricas do Modelo</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Acurácia (Treino)</span>
+                    <span class="metric-value" id="accTrain">-</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Profundidade</span>
+                    <span class="metric-value" id="treeDepth">-</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Nós Totais</span>
+                    <span class="metric-value" id="totalNodes">-</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Folhas</span>
+                    <span class="metric-value" id="leafCount">-</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script src="js/pyodide-loader.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
