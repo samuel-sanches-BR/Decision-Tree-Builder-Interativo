@@ -234,20 +234,27 @@ class EducationalDecisionTree:
 # ===== FUNÇÕES DE VISUALIZAÇÃO =====
 
 def plot_boundary(tree, X, y, resolution=150):
-    """Plota fronteira de decisão e dados (retorna base64 para embed)"""
+    """Plota fronteira de decisão e dados (retorna base64 como string)"""
     import matplotlib.pyplot as plt
     import io, base64
     
     if X.shape[1] != 2:
-        # Plot de erro para dimensões inválidas
         fig, ax = plt.subplots(figsize=(4, 3))
-        ax.text(0.5, 0.5, "Apenas datasets 2D\nsão suportados para\nvisualização", 
+        ax.text(0.5, 0.5, "Apenas datasets 2D\nsão suportados", 
                ha='center', va='center', fontsize=10)
         ax.axis('off')
         buf = io.BytesIO()
         fig.savefig(buf, format='png', bbox_inches='tight')
         plt.close(fig)
-        return base64.b64encode(buf.getvalue()).decode()
+        return base64.b64encode(buf.getvalue()).decode('utf-8')
+    
+    
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=100)
+    plt.close(fig)
+
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
     
     # Grid para fronteira
     x_min, x_max = X[:, 0].min() - 0.5, X[:, 0].max() + 0.5
