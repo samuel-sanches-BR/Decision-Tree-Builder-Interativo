@@ -117,6 +117,9 @@
         #status.loading { color: #2563eb; }
         #status.error { color: #ef4444; }
         #status.success { color: #22c55e; }
+
+        /* ===== UTILS ===== */
+        .mt-2 { margin-top: 1rem; }
     </style>
 </head>
 <body>
@@ -215,10 +218,10 @@
 
     <script>
         // ===== ESTADO GLOBAL =====
-        const State = {
+        const App = {
             pyodide: null,
-            X: null, y: null,
-            tree: null,
+            X: null, 
+            y: null,
             loaded: false
         };
 
@@ -266,27 +269,27 @@
         async function loadPyodideEnv() {
             try {
                 setStatus('Inicializando Pyodide...', 'loading');
-                State.pyodide = await loadPyodide({
+                App.pyodide = await loadPyodide({
                     indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
                 });
                 
-                await State.pyodide.loadPackage(['numpy', 'matplotlib']);
+                await App.pyodide.loadPackage(['numpy', 'matplotlib']);
                 
-                await State.pyodide.runPythonAsync(`
+                await App.pyodide.runPythonAsync(`
                     import matplotlib
                     matplotlib.use('Agg')
                     import matplotlib.pyplot as plt
                 `);
                 
-                // ✅ CARREGAR CÓDIGO PYTHON DIRETAMENTE (sem import)
+                // ✅ CARREGAR CÓDIGO PYTHON DIRETAMENTE
                 setStatus('Carregando módulo Decision Tree...', 'loading');
                 const response = await fetch('decision_tree_educational.py');
                 const pyCode = await response.text();
                 
                 // Executa o código Python diretamente no escopo global
-                await State.pyodide.runPythonAsync(pyCode);
+                await App.pyodide.runPythonAsync(pyCode);
                 
-                State.loaded = true;
+                App.loaded = true;
                 setStatus('Ambiente pronto! ✓', 'success');
                 log('✅ Pyodide e módulo carregados com sucesso', 'success');
             } catch (err) {
@@ -297,17 +300,20 @@
         }
 
         async function loadDataset(type) {
-            if (!State.loaded) return setStatus('Aguarde o carregamento...', 'loading');
+            if (!App.loaded) return setStatus('Aguarde o carregamento...', 'loading');
             
             try {
                 log(`\n📦 Carregando dataset '${type}'...`);
-                const result = await State.pyodide.runPythonAsync(`
+                
+                // ✅ Armazena X e y em variáveis globais do Python
+                const result = await App.pyodide.runPythonAsync(`
                     import json
-                    X, y = generate_dataset('${type}')
-                    json.dumps({'X': X.tolist(), 'y': y.tolist(), 'n': len(y)})
+                    _X, _y = generate_dataset('${type}')
+                    json.dumps({'X': _X.tolist(), 'y': _y.tolist(), 'n': len(_y)})
                 `);
                 const data = JSON.parse(result);
-                State.X = data.X; State.y = data.y;
+                App.X = data.X; 
+                App.y = data.y;
                 
                 await plotData(data.X, data.y);
                 log(`✓ Dataset carregado: ${data.n} amostras, 2 features`, 'success');
@@ -321,7 +327,7 @@
         }
 
         async function plotData(X, y) {
-            const b64 = await State.pyodide.runPythonAsync(`
+            const b64 = await App.pyodide.runPythonAsync(`
                 import numpy as np, matplotlib.pyplot as plt, io, base64
                 X, y = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
                 fig, ax = plt.subplots(figsize=(5,4), dpi=100)
@@ -338,7 +344,7 @@
         }
 
         async function trainTree() {
-            if (!State.loaded || !State.X) return;
+            if (!App.loaded || !App.X) return;
             
             $('trainBtn').disabled = true;
             $('trainBtn').textContent = '🔄 Treinando...';
@@ -352,24 +358,23 @@
                     min_samples: parseInt($('minSamples').value)
                 };
                 
-                const logs = await State.pyodide.runPythonAsync(`
+                // ✅ Treina e armazena TUDO em variáveis globais do Python
+                const logs = await App.pyodide.runPythonAsync(`
                     import numpy as np, json
                     
-                    X = np.array(${JSON.stringify(State.X)})
-                    y = np.array(${JSON.stringify(State.y)})
-                    
+                    # Usa variáveis globais do Python (_X, _y)
                     tree = EducationalDecisionTree(
                         criterion='${params.criterion}',
                         max_depth=${params.max_depth},
                         min_samples_split=${params.min_samples}
                     )
-                    logs = tree.fit(X, y)
+                    logs = tree.fit(_X, _y)
                     
-                    import js
-                    js.State.tree = tree
-                    js.State._X, js.State._y = X, y
+                    # Armazena em variáveis globais para uso posterior
+                    _tree = tree
+                    _metrics = tree.get_metrics(_X, _y)
                     
-                    json.dumps({'logs': logs, 'metrics': tree.get_metrics(X, y)})
+                    json.dumps({'logs': logs, 'metrics': _metrics})
                 `);
                 
                 const result = JSON.parse(logs);
@@ -379,6 +384,7 @@
                     log(line, cls);
                 });
                 
+                // ✅ Atualiza visualizações usando variáveis globais do Python
                 await Promise.all([
                     plotDecisionBoundary(),
                     plotTreeStructure(),
@@ -399,17 +405,17 @@
         }
 
         async function plotDecisionBoundary() {
-            const b64 = await State.pyodide.runPythonAsync(`
-                import js
-                plot_boundary(js.State.tree, js.State._X, js.State._y)
+            // ✅ Usa variáveis globais do Python (_tree, _X, _y)
+            const b64 = await App.pyodide.runPythonAsync(`
+                plot_boundary(_tree, _X, _y)
             `);
             $('plotBoundary').innerHTML = `<img src="image/png;base64,${b64}" alt="Fronteira">`;
         }
 
         async function plotTreeStructure() {
-            const text = await State.pyodide.runPythonAsync(`
-                import js
-                tree_to_text(js.State.tree)
+            // ✅ Usa variável global do Python (_tree)
+            const text = await App.pyodide.runPythonAsync(`
+                tree_to_text(_tree)
             `);
             $('treeViz').textContent = text;
         }
