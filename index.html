@@ -3,110 +3,468 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decision Tree Builder Interativo</title>
+    <title>🌳 Decision Tree Builder Educacional</title>
     
-    <!-- KaTeX para fórmulas matemáticas -->
+    <!-- KaTeX para fórmulas -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
     
-    <!-- Estilos -->
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Pyodide -->
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    
+    <style>
+        /* ===== RESET & BASE ===== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f8fafc; color: #1e293b; line-height: 1.6;
+        }
+        
+        /* ===== HEADER ===== */
+        header {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white; padding: 1.5rem 2rem; text-align: center;
+        }
+        header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
+        header .subtitle { opacity: 0.95; font-size: 1.05rem; }
+        
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 1300px; margin: 0 auto; padding: 1.25rem;
+            display: grid; gap: 1.25rem;
+        }
+        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr !important; } }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+        
+        /* ===== CARDS ===== */
+        .card {
+            background: white; border-radius: 12px; border: 1px solid #e2e8f0;
+            padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card h3 { color: #2563eb; margin-bottom: 0.75rem; font-size: 1.1rem; }
+        
+        /* ===== CONTROLES ===== */
+        .controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px; }
+        .control-group label { font-size: 0.85rem; font-weight: 500; color: #64748b; }
+        select, input[type="number"], input[type="range"] {
+            padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 0.95rem; background: white;
+        }
+        input[type="range"] { padding: 0; height: 28px; }
+        
+        /* ===== BOTÕES ===== */
+        .btn {
+            padding: 0.65rem 1.25rem; border: none; border-radius: 8px;
+            font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.95rem;
+        }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-secondary { background: white; color: #2563eb; border: 2px solid #2563eb; }
+        .btn-secondary:hover { background: #2563eb; color: white; }
+        .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .btn-small { padding: 0.35rem 0.7rem; font-size: 0.85rem; border-radius: 6px; }
+        .btn-dataset { background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155; }
+        .btn-dataset:hover, .btn-dataset.active { background: #2563eb; color: white; border-color: #2563eb; }
+        
+        /* ===== VISUALIZAÇÃO ===== */
+        .plot-area {
+            width: 100%; height: 320px; background: #fafafa; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+        }
+        .plot-area img { max-width: 100%; max-height: 100%; }
+        .plot-caption { text-align: center; font-size: 0.8rem; color: #64748b; margin-top: 0.4rem; }
+        
+        /* ===== LOG DE CÁLCULOS ===== */
+        .calc-log {
+            background: #0f172a; color: #e2e8f0; padding: 0.9rem; border-radius: 8px;
+            font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.8rem;
+            max-height: 220px; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;
+        }
+        .calc-log .info { color: #94a3b8; }
+        .calc-log .success { color: #22c55e; }
+        .calc-log .warn { color: #f59e0b; }
+        .calc-log .error { color: #ef4444; }
+        
+        /* ===== FÓRMULAS ===== */
+        .formula-box {
+            background: #f1f5f9; padding: 0.75rem; border-radius: 8px;
+            text-align: center; margin-top: 0.75rem; font-size: 1.1rem;
+        }
+        
+        /* ===== MÉTRICAS ===== */
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+        @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+        .metric {
+            background: #f8fafc; padding: 0.8rem; border-radius: 8px;
+            text-align: center; border: 1px solid #e2e8f0;
+        }
+        .metric .label { font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.3rem; }
+        .metric .value { font-size: 1.4rem; font-weight: 600; color: #2563eb; }
+        
+        /* ===== ÁRVORE TEXTUAL ===== */
+        .tree-text {
+            font-family: 'Fira Code', monospace; font-size: 0.75rem;
+            background: #f8fafc; padding: 0.8rem; border-radius: 8px;
+            max-height: 320px; overflow: auto; white-space: pre; line-height: 1.5;
+        }
+        
+        /* ===== STATUS ===== */
+        #status {
+            text-align: center; padding: 0.5rem; font-size: 0.9rem;
+            color: #64748b; min-height: 1.5rem;
+        }
+        #status.loading { color: #2563eb; }
+        #status.error { color: #ef4444; }
+        #status.success { color: #22c55e; }
+        
+        /* ===== UTILS ===== */
+        .hidden { display: none !important; }
+        .mt-1 { margin-top: 0.5rem; }
+        .mt-2 { margin-top: 1rem; }
+        .text-center { text-align: center; }
+        .flex-center { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    </style>
 </head>
 <body>
     <header>
         <h1>🌳 Decision Tree Builder</h1>
-        <p class="subtitle">Aprenda como árvores de decisão funcionam — passo a passo</p>
+        <p class="subtitle">Aprenda árvores de decisão com cálculos visíveis e interface interativa</p>
     </header>
 
-    <main class="container">
-        <!-- Painel de Controle -->
-        <section class="control-panel">
-            <div class="control-group">
-                <label for="criterion">Critério de Split:</label>
-                <select id="criterion">
-                    <option value="gini">Gini Impurity</option>
-                    <option value="entropy">Entropia (Information Gain)</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label for="maxDepth">Profundidade Máxima: <span id="depthValue">3</span></label>
-                <input type="range" id="maxDepth" min="1" max="6" value="3">
-            </div>
-
-            <div class="control-group">
-                <label for="minSamples">Mín. Amostras por Folha:</label>
-                <input type="number" id="minSamples" value="2" min="1" max="10">
-            </div>
-
-            <div class="control-group">
-                <label>Dataset:</label>
-                <div class="dataset-buttons">
-                    <button data-dataset="moon">Moons</button>
-                    <button data-dataset="circle">Circles</button>
-                    <button data-dataset="linear">Linear Separable</button>
-                    <button id="uploadBtn">Upload CSV</button>
+    <div class="container">
+        <!-- Controles -->
+        <section class="card">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Critério:</label>
+                    <select id="criterion">
+                        <option value="gini">Gini</option>
+                        <option value="entropy">Entropia</option>
+                    </select>
                 </div>
-                <input type="file" id="csvUpload" accept=".csv" hidden>
+                <div class="control-group">
+                    <label>Profundidade: <span id="depthVal">3</span></label>
+                    <input type="range" id="maxDepth" min="1" max="6" value="3">
+                </div>
+                <div class="control-group">
+                    <label>Mín. amostras/folha:</label>
+                    <input type="number" id="minSamples" value="2" min="1" max="10" style="width:70px">
+                </div>
+                <div class="control-group">
+                    <label>Dataset:</label>
+                    <div class="btn-group">
+                        <button class="btn btn-small btn-dataset active" data-ds="moon">Moons</button>
+                        <button class="btn btn-small btn-dataset" data-ds="circle">Circles</button>
+                        <button class="btn btn-small btn-dataset" data-ds="linear">Linear</button>
+                    </div>
+                </div>
+                <button id="trainBtn" class="btn btn-primary">🔄 Treinar</button>
             </div>
-
-            <button id="trainBtn" class="primary-btn">🔄 Treinar Árvore</button>
-            <button id="stepBtn" class="secondary-btn">▶️ Passo a Passo</button>
+            <div id="status">Carregando ambiente Python...</div>
         </section>
 
-        <!-- Área de Visualização -->
-        <section class="visualization-area">
-            <div class="plot-container">
-                <div id="decisionBoundary"></div>
-                <div class="plot-caption">Fronteira de Decisão e Dados</div>
+        <!-- Visualizações -->
+        <section class="grid-2">
+            <div class="card">
+                <h3>📊 Fronteira de Decisão</h3>
+                <div id="plotBoundary" class="plot-area"></div>
+                <div class="plot-caption">Como a árvore classifica o espaço de features</div>
             </div>
-            
-            <div class="tree-container">
-                <div id="treeViz"></div>
-                <div class="plot-caption">Estrutura da Árvore</div>
+            <div class="card">
+                <h3>🌲 Estrutura da Árvore</h3>
+                <div id="treeViz" class="tree-text">Treine a árvore para ver a estrutura...</div>
+                <div class="plot-caption">Representação textual com ganho de informação</div>
             </div>
         </section>
 
-        <!-- Painel de Cálculos -->
-        <section class="calculations-panel">
-            <h3>📐 Cálculos Detalhados</h3>
-            <div id="calculationLog" class="calculation-log">
-                <p class="placeholder">Selecione um dataset e clique em "Treinar" para ver os cálculos...</p>
+        <!-- Cálculos e Fórmulas -->
+        <section class="grid-2">
+            <div class="card">
+                <h3>📐 Cálculos Detalhados</h3>
+                <div id="calcLog" class="calc-log">Aguardando treinamento...</div>
             </div>
-            
-            <div id="formulaDisplay" class="formula-box">
-                <!-- Fórmulas KaTeX serão inseridas aqui -->
+            <div class="card">
+                <h3>🧮 Fórmula Atual</h3>
+                <div id="formulaBox" class="formula-box">
+                    \[ Gini(D) = 1 - \sum_{i=1}^{c} p_i^2 \]
+                </div>
+                <div class="mt-2">
+                    <strong>Information Gain:</strong><br>
+                    <small style="color:#64748b">Redução da impureza após o split</small>
+                </div>
             </div>
         </section>
 
         <!-- Métricas -->
-        <section class="metrics-panel">
-            <h3>📊 Métricas do Modelo</h3>
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <span class="metric-label">Acurácia (Treino)</span>
-                    <span class="metric-value" id="accTrain">-</span>
+        <section class="card">
+            <h3>📈 Métricas do Modelo</h3>
+            <div class="metrics">
+                <div class="metric">
+                    <span class="label">Acurácia</span>
+                    <span class="value" id="acc">-</span>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">Profundidade</span>
-                    <span class="metric-value" id="treeDepth">-</span>
+                <div class="metric">
+                    <span class="label">Profundidade</span>
+                    <span class="value" id="depth">-</span>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">Nós Totais</span>
-                    <span class="metric-value" id="totalNodes">-</span>
+                <div class="metric">
+                    <span class="label">Nós Totais</span>
+                    <span class="value" id="nodes">-</span>
                 </div>
-                <div class="metric-card">
-                    <span class="metric-label">Folhas</span>
-                    <span class="metric-value" id="leafCount">-</span>
+                <div class="metric">
+                    <span class="label">Folhas</span>
+                    <span class="value" id="leaves">-</span>
                 </div>
             </div>
         </section>
-    </main>
+    </div>
 
-    <!-- Pyodide -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-    <script src="js/pyodide-loader.js"></script>
-    <script src="js/main.js"></script>
+    <script>
+        // ===== ESTADO GLOBAL =====
+        const State = {
+            pyodide: null,
+            X: null, y: null,
+            tree: null,
+            loaded: false
+        };
+
+        // ===== UTILS =====
+        const $ = id => document.getElementById(id);
+        const escapeHtml = s => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+        const log = (msg, type='info') => {
+            const el = $('calcLog');
+            const prefix = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type] || 'ⓘ';
+            el.innerHTML += `<span class="${type}">[${prefix}] ${escapeHtml(msg)}</span><br>`;
+            el.scrollTop = el.scrollHeight;
+        };
+        const setStatus = (msg, type='') => {
+            const el = $('status');
+            el.textContent = msg;
+            el.className = type ? type : '';
+        };
+
+        // ===== INICIALIZAÇÃO =====
+        async function init() {
+            // Slider de profundidade
+            $('maxDepth').oninput = e => $('depthVal').textContent = e.target.value;
+            
+            // Botões de dataset
+            document.querySelectorAll('[data-ds]').forEach(btn => {
+                btn.onclick = async () => {
+                    document.querySelectorAll('[data-ds]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    await loadDataset(btn.dataset.ds);
+                };
+            });
+            
+            // Botão treinar
+            $('trainBtn').onclick = trainTree;
+            
+            // Atualizar fórmula ao mudar critério
+            $('criterion').onchange = updateFormula;
+            
+            // Carregar Pyodide
+            await loadPyodideEnv();
+            
+            // Dataset inicial
+            await loadDataset('moon');
+            
+            // Renderizar KaTeX
+            if (window.renderMathInElement) {
+                renderMathInElement($('formulaBox'), {delimiters: [
+                    {left: "\\[", right: "\\]", display: true},
+                    {left: "\\(", right: "\\)", display: false}
+                ]});
+            }
+        }
+
+        async function loadPyodideEnv() {
+            try {
+                setStatus('Inicializando Pyodide...', 'loading');
+                State.pyodide = await loadPyodide({
+                    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
+                });
+                await State.pyodide.loadPackage(['numpy', 'matplotlib']);
+                await State.pyodide.runPythonAsync(`
+                    import matplotlib
+                    matplotlib.use('Agg')
+                    import matplotlib.pyplot as plt
+                `);
+                
+                // Carregar código Python
+                setStatus('Carregando módulo Decision Tree...', 'loading');
+                const response = await fetch('decision_tree_educational.py');
+                const pyCode = await response.text();
+                await State.pyodide.runPythonAsync(pyCode);
+                
+                State.loaded = true;
+                setStatus('Ambiente pronto! ✓', 'success');
+                log('✅ Pyodide e módulo carregados com sucesso', 'success');
+            } catch (err) {
+                console.error(err);
+                setStatus('Erro ao carregar ambiente. Recarregue a página.', 'error');
+                log(`❌ Erro: ${err.message}`, 'error');
+            }
+        }
+
+        async function loadDataset(type) {
+            if (!State.loaded) return setStatus('Aguarde o carregamento...', 'loading');
+            
+            try {
+                log(`\n📦 Carregando dataset '${type}'...`);
+                const result = await State.pyodide.runPythonAsync(`
+                    import json
+                    from decision_tree_educational import generate_dataset
+                    X, y = generate_dataset('${type}')
+                    json.dumps({'X': X.tolist(), 'y': y.tolist(), 'n': len(y)})
+                `);
+                const data = JSON.parse(result);
+                State.X = data.X; State.y = data.y;
+                
+                // Plot apenas os dados
+                await plotData(data.X, data.y);
+                log(`✓ Dataset carregado: ${data.n} amostras, 2 features`, 'success');
+                
+                // Resetar visualizações
+                $('treeViz').textContent = 'Treine a árvore para ver a estrutura...';
+                resetMetrics();
+                
+            } catch (err) {
+                log(`❌ Erro ao carregar dataset: ${err.message}`, 'error');
+            }
+        }
+
+        async function plotData(X, y) {
+            const b64 = await State.pyodide.runPythonAsync(`
+                import numpy as np, matplotlib.pyplot as plt, io, base64
+                X, y = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
+                fig, ax = plt.subplots(figsize=(5,4), dpi=100)
+                for cls in np.unique(y):
+                    m = y == cls
+                    ax.scatter(X[m,0], X[m,1], label=f'Classe {int(cls)}', 
+                              edgecolors='white', s=35, alpha=0.9)
+                ax.set_xlabel('Feature 1'); ax.set_ylabel('Feature 2')
+                ax.legend(fontsize=8); ax.grid(alpha=0.3); ax.set_title('Dados')
+                buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight')
+                plt.close(fig); base64.b64encode(buf.getvalue()).decode()
+            `);
+            $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64}" alt="Plot">`;
+        }
+
+        async function trainTree() {
+            if (!State.loaded || !State.X) return;
+            
+            $('trainBtn').disabled = true;
+            $('trainBtn').textContent = '🔄 Treinando...';
+            $('calcLog').innerHTML = '';
+            setStatus('Treinando árvore...', 'loading');
+            
+            try {
+                const params = {
+                    criterion: $('criterion').value,
+                    max_depth: parseInt($('maxDepth').value),
+                    min_samples: parseInt($('minSamples').value)
+                };
+                
+                // Executar treinamento
+                const logs = await State.pyodide.runPythonAsync(`
+                    import numpy as np, json
+                    from decision_tree_educational import EducationalDecisionTree
+                    
+                    X = np.array(${JSON.stringify(State.X)})
+                    y = np.array(${JSON.stringify(State.y)})
+                    
+                    tree = EducationalDecisionTree(
+                        criterion='${params.criterion}',
+                        max_depth=${params.max_depth},
+                        min_samples_split=${params.min_samples}
+                    )
+                    logs = tree.fit(X, y)
+                    
+                    # Guardar no escopo global para visualização
+                    import js
+                    js.State.tree = tree
+                    js.State._X, js.State._y = X, y
+                    
+                    json.dumps({'logs': logs, 'metrics': tree.get_metrics(X, y)})
+                `);
+                
+                const result = JSON.parse(logs);
+                
+                // Exibir logs
+                result.logs.forEach(line => {
+                    const cls = line.includes('✅') ? 'success' : line.includes('⚠') ? 'warn' : 'info';
+                    log(line, cls);
+                });
+                
+                // Atualizar visualizações
+                await Promise.all([
+                    plotDecisionBoundary(),
+                    plotTreeStructure(),
+                    updateMetrics(result.metrics),
+                    updateFormula()
+                ]);
+                
+                setStatus('Treinamento concluído! ✓', 'success');
+                
+            } catch (err) {
+                console.error(err);
+                log(`❌ Erro no treinamento: ${err.message}`, 'error');
+                setStatus('Erro no treinamento', 'error');
+            } finally {
+                $('trainBtn').disabled = false;
+                $('trainBtn').textContent = '🔄 Treinar';
+            }
+        }
+
+        async function plotDecisionBoundary() {
+            const b64 = await State.pyodide.runPythonAsync(`
+                from decision_tree_educational import plot_boundary
+                import js
+                plot_boundary(js.State.tree, js.State._X, js.State._y)
+            `);
+            $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64}" alt="Fronteira">`;
+        }
+
+        async function plotTreeStructure() {
+            const text = await State.pyodide.runPythonAsync(`
+                from decision_tree_educational import tree_to_text
+                import js
+                tree_to_text(js.State.tree)
+            `);
+            $('treeViz').textContent = text;
+        }
+
+        function updateMetrics(m) {
+            $('acc').textContent = (m.accuracy * 100).toFixed(1) + '%';
+            $('depth').textContent = m.max_depth;
+            $('nodes').textContent = m.total_nodes;
+            $('leaves').textContent = m.leaf_count;
+        }
+
+        function resetMetrics() {
+            ['acc','depth','nodes','leaves'].forEach(id => $(id).textContent = '-');
+        }
+
+        function updateFormula() {
+            const crit = $('criterion').value;
+            const formula = crit === 'gini' 
+                ? `Gini(D) = 1 - \\\\sum_{i=1}^{c} p_i^2`
+                : `Entropia(D) = -\\\\sum_{i=1}^{c} p_i \\\\log_2(p_i)`;
+            $('formulaBox').innerHTML = `\\[${formula}\\]`;
+            if (window.renderMathInElement) {
+                renderMathInElement($('formulaBox'), {delimiters: [
+                    {left: "\\[", right: "\\]", display: true}
+                ]});
+            }
+        }
+
+        // Iniciar quando DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
 </body>
 </html>
