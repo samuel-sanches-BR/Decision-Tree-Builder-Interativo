@@ -281,7 +281,6 @@
                     import matplotlib.pyplot as plt
                 `);
                 
-                // ✅ CARREGAR CÓDIGO PYTHON DIRETAMENTE
                 setStatus('Carregando módulo Decision Tree...', 'loading');
                 const response = await fetch('decision_tree_educational.py');
                 const pyCode = await response.text();
@@ -305,7 +304,6 @@
             try {
                 log(`\n📦 Carregando dataset '${type}'...`);
                 
-                // ✅ Armazena X e y em variáveis globais do Python
                 const result = await App.pyodide.runPythonAsync(`
                     import json
                     _X, _y = generate_dataset('${type}')
@@ -358,7 +356,6 @@
                     min_samples: parseInt($('minSamples').value)
                 };
                 
-                // ✅ Treina e armazena TUDO em variáveis globais do Python
                 const logs = await App.pyodide.runPythonAsync(`
                     import numpy as np, json
                     
@@ -384,7 +381,6 @@
                     log(line, cls);
                 });
                 
-                // ✅ Atualiza visualizações usando variáveis globais do Python
                 await Promise.all([
                     plotDecisionBoundary(),
                     plotTreeStructure(),
@@ -405,19 +401,45 @@
         }
 
         async function plotDecisionBoundary() {
-            // ✅ Usa variáveis globais do Python (_tree, _X, _y)
-            const b64 = await App.pyodide.runPythonAsync(`
-                plot_boundary(_tree, _X, _y)
-            `);
-            $('plotBoundary').innerHTML = `<img src="image/png;base64,${b64}" alt="Fronteira">`;
+            try {
+                const b64Proxy = await App.pyodide.runPythonAsync(`
+                    plot_boundary(_tree, _X, _y)
+                `);
+                
+                const b64 = typeof b64Proxy === 'string' ? b64Proxy : b64Proxy.toString();
+                
+                if (!b64 || b64.length < 100) {
+                    throw new Error('Dados de imagem inválidos');
+                }
+                
+                $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64}" alt="Fronteira" style="max-width:100%;height:auto;">`;
+                
+                if (b64Proxy && typeof b64Proxy.destroy === 'function') {
+                    b64Proxy.destroy();
+                }
+            } catch (err) {
+                console.error('Erro ao plotar fronteira:', err);
+                $('plotBoundary').innerHTML = `<div style="color:#ef4444;text-align:center;padding:1rem;">❌ Erro ao gerar imagem:<br><small>${escapeHtml(err.message)}</small></div>`;
+            }
         }
 
         async function plotTreeStructure() {
-            // ✅ Usa variável global do Python (_tree)
-            const text = await App.pyodide.runPythonAsync(`
-                tree_to_text(_tree)
-            `);
-            $('treeViz').textContent = text;
+            try {
+                const textProxy = await App.pyodide.runPythonAsync(`
+                    tree_to_text(_tree)
+                `);
+                
+                const text = typeof textProxy === 'string' ? textProxy : textProxy.toString();
+                
+                $('treeViz').textContent = text || 'Árvore vazia';
+                
+                if (textProxy && typeof textProxy.destroy === 'function') {
+                    textProxy.destroy();
+                }
+            } catch (err) {
+                console.error('Erro ao gerar árvore:', err);
+                $('treeViz').textContent = `❌ Erro: ${err.message}`;
+            }
         }
 
         function updateMetrics(m) {
