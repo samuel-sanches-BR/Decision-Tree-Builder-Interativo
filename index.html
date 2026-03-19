@@ -183,7 +183,7 @@
             $('modeAdvanced').onclick = () => setMode(false);
             $('criterion').onchange = updateFormula;
             
-            await loadPyodide();
+            await initPyodide();
             await loadDataset('moon');
             if (window.renderMathInElement) renderMathInElement($('formulaBox'), {delimiters: [{left:"\\[",right:"\\]",display:true}]});
         }
@@ -196,10 +196,10 @@
             updateFormula();
         }
 
-        async function loadPyodide() {
+        async function initPyodide() {
             try {
                 setStatus('Inicializando Pyodide...', 'loading');
-                App.pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" });
+                App.pyodide = await globalThis.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" });
                 await App.pyodide.loadPackage(['numpy', 'matplotlib']);
                 await App.pyodide.runPythonAsync(`import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt`);
                 
