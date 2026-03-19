@@ -295,11 +295,23 @@
                     import matplotlib.pyplot as plt
                 `);
                 
-                // Carregar código Python
+                // ✅ CORREÇÃO: Carregar arquivo Python no filesystem virtual do Pyodide
                 setStatus('Carregando módulo Decision Tree...', 'loading');
                 const response = await fetch('decision_tree_educational.py');
                 const pyCode = await response.text();
-                await State.pyodide.runPythonAsync(pyCode);
+                
+                // Escrever o código no filesystem virtual do Pyodide
+                await State.pyodide.runPythonAsync(`
+                    import os
+                    # Criar o arquivo no path do Python do Pyodide
+                    with open('decision_tree_educational.py', 'w') as f:
+                        f.write('''${pyCode.replace(/'''/g, "\\'\\'\\'")}''')
+                `);
+                
+                // Agora importar o módulo
+                await State.pyodide.runPythonAsync(`
+                    import decision_tree_educational
+                `);
                 
                 State.loaded = true;
                 setStatus('Ambiente pronto! ✓', 'success');
@@ -352,7 +364,7 @@
                 buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight')
                 plt.close(fig); base64.b64encode(buf.getvalue()).decode()
             `);
-            $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64}" alt="Plot">`;
+            $('plotBoundary').innerHTML = `<img src="image/png;base64,${b64}" alt="Plot">`;
         }
 
         async function trainTree() {
@@ -427,7 +439,7 @@
                 import js
                 plot_boundary(js.State.tree, js.State._X, js.State._y)
             `);
-            $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64}" alt="Fronteira">`;
+            $('plotBoundary').innerHTML = `<img src="image/png;base64,${b64}" alt="Fronteira">`;
         }
 
         async function plotTreeStructure() {
