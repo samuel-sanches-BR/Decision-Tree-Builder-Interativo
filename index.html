@@ -36,7 +36,6 @@
         }
         @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr !important; } }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
         
         /* ===== CARDS ===== */
         .card {
@@ -63,8 +62,6 @@
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-        .btn-secondary { background: white; color: #2563eb; border: 2px solid #2563eb; }
-        .btn-secondary:hover { background: #2563eb; color: white; }
         .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .btn-small { padding: 0.35rem 0.7rem; font-size: 0.85rem; border-radius: 6px; }
         .btn-dataset { background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155; }
@@ -120,13 +117,6 @@
         #status.loading { color: #2563eb; }
         #status.error { color: #ef4444; }
         #status.success { color: #22c55e; }
-        
-        /* ===== UTILS ===== */
-        .hidden { display: none !important; }
-        .mt-1 { margin-top: 0.5rem; }
-        .mt-2 { margin-top: 1rem; }
-        .text-center { text-align: center; }
-        .flex-center { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
     </style>
 </head>
 <body>
@@ -249,10 +239,8 @@
 
         // ===== INICIALIZAÇÃO =====
         async function init() {
-            // Slider de profundidade
             $('maxDepth').oninput = e => $('depthVal').textContent = e.target.value;
             
-            // Botões de dataset
             document.querySelectorAll('[data-ds]').forEach(btn => {
                 btn.onclick = async () => {
                     document.querySelectorAll('[data-ds]').forEach(b => b.classList.remove('active'));
@@ -261,19 +249,12 @@
                 };
             });
             
-            // Botão treinar
             $('trainBtn').onclick = trainTree;
-            
-            // Atualizar fórmula ao mudar critério
             $('criterion').onchange = updateFormula;
             
-            // Carregar Pyodide
             await loadPyodideEnv();
-            
-            // Dataset inicial
             await loadDataset('moon');
             
-            // Renderizar KaTeX
             if (window.renderMathInElement) {
                 renderMathInElement($('formulaBox'), {delimiters: [
                     {left: "\\[", right: "\\]", display: true},
@@ -288,30 +269,22 @@
                 State.pyodide = await loadPyodide({
                     indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
                 });
+                
                 await State.pyodide.loadPackage(['numpy', 'matplotlib']);
+                
                 await State.pyodide.runPythonAsync(`
                     import matplotlib
                     matplotlib.use('Agg')
                     import matplotlib.pyplot as plt
                 `);
                 
-                // ✅ CORREÇÃO: Carregar arquivo Python no filesystem virtual do Pyodide
+                // ✅ CARREGAR CÓDIGO PYTHON DIRETAMENTE (sem import)
                 setStatus('Carregando módulo Decision Tree...', 'loading');
                 const response = await fetch('decision_tree_educational.py');
                 const pyCode = await response.text();
                 
-                // Escrever o código no filesystem virtual do Pyodide
-                await State.pyodide.runPythonAsync(`
-                    import os
-                    # Criar o arquivo no path do Python do Pyodide
-                    with open('decision_tree_educational.py', 'w') as f:
-                        f.write('''${pyCode.replace(/'''/g, "\\'\\'\\'")}''')
-                `);
-                
-                // Agora importar o módulo
-                await State.pyodide.runPythonAsync(`
-                    import decision_tree_educational
-                `);
+                // Executa o código Python diretamente no escopo global
+                await State.pyodide.runPythonAsync(pyCode);
                 
                 State.loaded = true;
                 setStatus('Ambiente pronto! ✓', 'success');
@@ -330,18 +303,15 @@
                 log(`\n📦 Carregando dataset '${type}'...`);
                 const result = await State.pyodide.runPythonAsync(`
                     import json
-                    from decision_tree_educational import generate_dataset
                     X, y = generate_dataset('${type}')
                     json.dumps({'X': X.tolist(), 'y': y.tolist(), 'n': len(y)})
                 `);
                 const data = JSON.parse(result);
                 State.X = data.X; State.y = data.y;
                 
-                // Plot apenas os dados
                 await plotData(data.X, data.y);
                 log(`✓ Dataset carregado: ${data.n} amostras, 2 features`, 'success');
                 
-                // Resetar visualizações
                 $('treeViz').textContent = 'Treine a árvore para ver a estrutura...';
                 resetMetrics();
                 
@@ -382,10 +352,8 @@
                     min_samples: parseInt($('minSamples').value)
                 };
                 
-                // Executar treinamento
                 const logs = await State.pyodide.runPythonAsync(`
                     import numpy as np, json
-                    from decision_tree_educational import EducationalDecisionTree
                     
                     X = np.array(${JSON.stringify(State.X)})
                     y = np.array(${JSON.stringify(State.y)})
@@ -397,7 +365,6 @@
                     )
                     logs = tree.fit(X, y)
                     
-                    # Guardar no escopo global para visualização
                     import js
                     js.State.tree = tree
                     js.State._X, js.State._y = X, y
@@ -407,13 +374,11 @@
                 
                 const result = JSON.parse(logs);
                 
-                // Exibir logs
                 result.logs.forEach(line => {
                     const cls = line.includes('✅') ? 'success' : line.includes('⚠') ? 'warn' : 'info';
                     log(line, cls);
                 });
                 
-                // Atualizar visualizações
                 await Promise.all([
                     plotDecisionBoundary(),
                     plotTreeStructure(),
@@ -435,7 +400,6 @@
 
         async function plotDecisionBoundary() {
             const b64 = await State.pyodide.runPythonAsync(`
-                from decision_tree_educational import plot_boundary
                 import js
                 plot_boundary(js.State.tree, js.State._X, js.State._y)
             `);
@@ -444,7 +408,6 @@
 
         async function plotTreeStructure() {
             const text = await State.pyodide.runPythonAsync(`
-                from decision_tree_educational import tree_to_text
                 import js
                 tree_to_text(js.State.tree)
             `);
@@ -475,7 +438,6 @@
             }
         }
 
-        // Iniciar quando DOM estiver pronto
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
