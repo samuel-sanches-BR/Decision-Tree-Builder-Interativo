@@ -3,387 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌳 Decision Tree Builder - Aprendizado Interativo</title>
-    
-    <!-- KaTeX para fórmulas -->
+    <title>🌳 Decision Tree Builder</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    
-    <!-- Pyodide -->
     <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-    
     <style>
-        /* ===== RESET & BASE ===== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #f8fafc; color: #1e293b; line-height: 1.6;
-        }
-        
-        /* ===== HEADER ===== */
-        header {
-            background: linear-gradient(135deg, #2563eb, #7c3aed);
-            color: white; padding: 1.5rem 2rem; text-align: center;
-        }
-        header h1 { font-size: 1.8rem; margin-bottom: 0.3rem; }
-        header .subtitle { opacity: 0.95; font-size: 1.05rem; }
-        
-        /* ===== LAYOUT ===== */
-        .container {
-            max-width: 1300px; margin: 0 auto; padding: 1.25rem;
-            display: grid; gap: 1.25rem;
-        }
-        @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr !important; } }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-        
-        /* ===== CARDS ===== */
-        .card {
-            background: white; border-radius: 12px; border: 1px solid #e2e8f0;
-            padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        .card h3 { color: #2563eb; margin-bottom: 0.75rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
-        .card h3 .badge { font-size: 0.7rem; background: #dbeafe; color: #1e40af; padding: 0.2rem 0.5rem; border-radius: 4px; }
-        
-        /* ===== CONTROLES ===== */
-        .controls { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
-        .control-group { display: flex; flex-direction: column; gap: 0.3rem; min-width: 160px; }
-        .control-group label { font-size: 0.85rem; font-weight: 500; color: #64748b; }
-        select, input[type="number"], input[type="range"] {
-            padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 6px;
-            font-size: 0.95rem; background: white;
-        }
-        input[type="range"] { padding: 0; height: 28px; }
-        
-        /* ===== BOTÕES ===== */
-        .btn {
-            padding: 0.65rem 1.25rem; border: none; border-radius: 8px;
-            font-weight: 500; cursor: pointer; transition: all 0.2s; font-size: 0.95rem;
-        }
+        body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
+        header { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 1rem 2rem; text-align: center; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem; }
+        .card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 1rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+        .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+        .control-group { display: flex; flex-direction: column; gap: 0.25rem; }
+        .control-group label { font-size: 0.85rem; color: #64748b; }
+        select, input { padding: 0.4rem; border: 1px solid #e2e8f0; border-radius: 6px; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-        .btn-secondary { background: white; color: #2563eb; border: 2px solid #2563eb; }
-        .btn-secondary:hover { background: #2563eb; color: white; }
-        .btn-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-        .btn-small { padding: 0.35rem 0.7rem; font-size: 0.85rem; border-radius: 6px; }
-        .btn-dataset { background: #f1f5f9; border: 1px solid #e2e8f0; color: #334155; }
-        .btn-dataset:hover, .btn-dataset.active { background: #2563eb; color: white; border-color: #2563eb; }
-        .btn-toggle { background: #f1f5f9; border: 1px solid #cbd5e1; }
-        .btn-toggle.active { background: #2563eb; color: white; border-color: #2563eb; }
-        
-        /* ===== DATASET INFO ===== */
-        .dataset-info {
-            background: #f0f9ff; border-left: 4px solid #0ea5e9;
-            padding: 0.75rem 1rem; border-radius: 0 8px 8px 0; margin: 0.5rem 0;
-            font-size: 0.9rem;
-        }
-        .dataset-info h4 { color: #0369a1; margin-bottom: 0.3rem; font-size: 1rem; }
-        .dataset-info ul { margin-left: 1.2rem; margin-top: 0.3rem; }
-        .dataset-info li { margin: 0.15rem 0; color: #475569; }
-        .feature-tag {
-            display: inline-block; background: #e0f2fe; color: #0369a1;
-            padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.8rem;
-            margin: 0.1rem; cursor: help; border: 1px solid #bae6fd;
-        }
-        .feature-tag:hover { background: #bae6fd; }
-        
-        /* ===== VISUALIZAÇÃO ===== */
-        .plot-area {
-            width: 100%; height: 320px; background: #fafafa; border-radius: 8px;
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
-            position: relative;
-        }
+        .btn-group { display: flex; gap: 0.3rem; }
+        .btn-small { padding: 0.3rem 0.6rem; font-size: 0.85rem; border-radius: 5px; background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .btn-small.active { background: #2563eb; color: white; border-color: #2563eb; }
+        .plot-area { width: 100%; height: 280px; background: #fafafa; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .plot-area img { max-width: 100%; max-height: 100%; }
-        .plot-caption { text-align: center; font-size: 0.8rem; color: #64748b; margin-top: 0.4rem; }
-        .plot-overlay {
-            position: absolute; top: 0.5rem; right: 0.5rem;
-            background: rgba(255,255,255,0.95); padding: 0.4rem 0.6rem;
-            border-radius: 6px; font-size: 0.75rem; border: 1px solid #e2e8f0;
-        }
-        
-        /* ===== LOG DE CÁLCULOS ===== */
-        .calc-log {
-            background: #0f172a; color: #e2e8f0; padding: 0.9rem; border-radius: 8px;
-            font-family: 'Fira Code', 'Consolas', monospace; font-size: 0.8rem;
-            max-height: 220px; overflow-y: auto; white-space: pre-wrap; line-height: 1.4;
-        }
+        .calc-log { background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
         .calc-log .info { color: #94a3b8; }
         .calc-log .success { color: #22c55e; }
         .calc-log .warn { color: #f59e0b; }
-        .calc-log .error { color: #ef4444; }
-        .calc-log .explain { color: #67e8f9; font-style: italic; }
-        .calc-log .highlight { background: #1e293b; padding: 0.1rem 0.3rem; border-radius: 3px; }
-        
-        /* ===== MODO DIDÁTICO ===== */
-        .mode-toggle {
-            display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;
-        }
-        .mode-indicator {
-            font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px;
-            background: #dbeafe; color: #1e40af; font-weight: 500;
-        }
-        
-        /* ===== FÓRMULAS ===== */
-        .formula-box {
-            background: #f1f5f9; padding: 0.75rem; border-radius: 8px;
-            text-align: center; margin-top: 0.75rem; font-size: 1.1rem;
-        }
-        .formula-explain {
-            font-size: 0.85rem; color: #475569; margin-top: 0.5rem;
-            padding: 0.5rem; background: #f8fafc; border-radius: 6px;
-        }
-        
-        /* ===== MÉTRICAS ===== */
-        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+        .calc-log .explain { color: #67e8f9; font-style: italic; display: block; margin-top: 0.2rem; }
+        .formula-box { background: #f1f5f9; padding: 0.75rem; border-radius: 8px; text-align: center; }
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
         @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
-        .metric {
-            background: #f8fafc; padding: 0.8rem; border-radius: 8px;
-            text-align: center; border: 1px solid #e2e8f0;
-        }
-        .metric .label { font-size: 0.75rem; color: #64748b; display: block; margin-bottom: 0.3rem; }
-        .metric .value { font-size: 1.4rem; font-weight: 600; color: #2563eb; }
-        .metric .desc { font-size: 0.7rem; color: #94a3b8; margin-top: 0.2rem; }
-        
-        /* ===== ÁRVORE TEXTUAL ===== */
-        .tree-text {
-            font-family: 'Fira Code', monospace; font-size: 0.75rem;
-            background: #f8fafc; padding: 0.8rem; border-radius: 8px;
-            max-height: 320px; overflow: auto; white-space: pre; line-height: 1.5;
-        }
-        .tree-text .leaf { color: #16a34a; }
-        .tree-text .split { color: #2563eb; }
-        .tree-text .gain { color: #9333ea; }
-        
-        /* ===== STATUS ===== */
-        #status {
-            text-align: center; padding: 0.5rem; font-size: 0.9rem;
-            color: #64748b; min-height: 1.5rem;
-        }
+        .metric { background: #f8fafc; padding: 0.6rem; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; }
+        .metric .label { font-size: 0.75rem; color: #64748b; }
+        .metric .value { font-size: 1.3rem; font-weight: 600; color: #2563eb; }
+        .tree-text { font-family: monospace; font-size: 0.75rem; background: #f8fafc; padding: 0.75rem; border-radius: 8px; max-height: 280px; overflow: auto; white-space: pre; }
+        #status { text-align: center; padding: 0.4rem; font-size: 0.9rem; color: #64748b; }
         #status.loading { color: #2563eb; }
         #status.error { color: #ef4444; }
-        #status.success { color: #22c55e; }
-        
-        /* ===== TOOLTIP ===== */
-        .tooltip {
-            position: relative; display: inline-block; cursor: help;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden; width: 200px; background: #1e293b; color: #fff;
-            text-align: center; border-radius: 6px; padding: 0.5rem;
-            position: absolute; z-index: 1; bottom: 125%; left: 50%;
-            margin-left: -100px; opacity: 0; transition: opacity 0.2s;
-            font-size: 0.75rem; font-weight: normal;
-        }
-        .tooltip:hover .tooltiptext { visibility: visible; opacity: 1; }
+        .dataset-info { background: #f0f9ff; border-left: 3px solid #0ea5e9; padding: 0.6rem; border-radius: 0 6px 6px 0; font-size: 0.9rem; margin: 0.5rem 0; }
+        .dataset-info h4 { color: #0369a1; margin-bottom: 0.25rem; }
+        .feature-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem; margin: 0.1rem; }
+        .mode-toggle { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
+        .mode-indicator { font-size: 0.8rem; padding: 0.15rem 0.4rem; border-radius: 4px; background: #dbeafe; color: #1e40af; }
     </style>
 </head>
 <body>
     <header>
         <h1>🌳 Decision Tree Builder</h1>
-        <p class="subtitle">Aprenda árvores de decisão com explicações claras e visualizações interativas</p>
+        <p style="opacity:0.9">Aprenda árvores de decisão com explicações claras</p>
     </header>
 
     <div class="container">
-        <!-- Controles + Info do Dataset -->
+        <!-- Controles -->
         <section class="card">
             <div class="controls">
                 <div class="control-group">
-                    <label>Critério de Split:</label>
+                    <label>Critério:</label>
                     <select id="criterion">
-                        <option value="gini">Índice Gini</option>
+                        <option value="gini">Gini</option>
                         <option value="entropy">Entropia</option>
                     </select>
                 </div>
                 <div class="control-group">
-                    <label>Profundidade Máxima: <span id="depthVal">3</span></label>
+                    <label>Profundidade: <span id="depthVal">3</span></label>
                     <input type="range" id="maxDepth" min="1" max="6" value="3">
-                </div>
-                <div class="control-group">
-                    <label>Mín. amostras/folha:</label>
-                    <input type="number" id="minSamples" value="2" min="1" max="10" style="width:70px">
                 </div>
                 <div class="control-group">
                     <label>Dataset:</label>
                     <div class="btn-group">
-                        <button class="btn btn-small btn-dataset active" data-ds="moon">🌙 Moons</button>
-                        <button class="btn btn-small btn-dataset" data-ds="circle">⭕ Circles</button>
-                        <button class="btn btn-small btn-dataset" data-ds="linear">📈 Linear</button>
+                        <button class="btn btn-small active" data-ds="moon">🌙 Moons</button>
+                        <button class="btn btn-small" data-ds="circle">⭕ Circles</button>
+                        <button class="btn btn-small" data-ds="linear">📈 Linear</button>
                     </div>
                 </div>
-                <button id="trainBtn" class="btn btn-primary">🔄 Treinar Árvore</button>
+                <button id="trainBtn" class="btn btn-primary">🔄 Treinar</button>
             </div>
             
-            <!-- Info do Dataset Selecionado -->
             <div id="datasetInfo" class="dataset-info">
-                <h4>📊 Dataset: Two Moons</h4>
-                <p><strong>Contexto:</strong> Dados simulados em formato de duas "meias-luas", comum em problemas de classificação não-linear.</p>
-                <p><strong>Features:</strong> 
-                    <span class="tooltip feature-tag" title="Coordenada horizontal no plano 2D">X₁: posição horizontal</span>
-                    <span class="tooltip feature-tag" title="Coordenada vertical no plano 2D">X₂: posição vertical</span>
-                </p>
-                <p><strong>Target:</strong> Classe 0 (lua inferior) ou Classe 1 (lua superior)</p>
-                <p><small>💡 <em>Dica: Observe como os pontos se agrupam antes de treinar!</em></small></p>
+                <h4>📊 Two Moons</h4>
+                <p>Dados em formato de meias-luas. Classes se entrelaçam — desafio para árvores!</p>
+                <p><strong>Features:</strong> <span class="feature-tag">X₁: horizontal</span> <span class="feature-tag">X₂: vertical</span></p>
             </div>
             
-            <!-- Toggle Modo Didático -->
             <div class="mode-toggle">
-                <span style="font-size:0.9rem;font-weight:500;">Modo de Explicação:</span>
-                <button class="btn btn-small btn-toggle active" id="modeSimple">🎓 Didático</button>
-                <button class="btn btn-small btn-toggle" id="modeAdvanced">⚙️ Técnico</button>
-                <span class="mode-indicator" id="modeIndicator">Explicações simplificadas</span>
+                <span style="font-size:0.85rem;">Explicações:</span>
+                <button class="btn btn-small active" id="modeSimple">🎓 Simples</button>
+                <button class="btn btn-small" id="modeAdvanced">⚙️ Técnico</button>
+                <span class="mode-indicator" id="modeLabel">Linguagem acessível</span>
             </div>
             
-            <div id="status">Carregando ambiente Python...</div>
+            <div id="status">Carregando...</div>
         </section>
 
-        <!-- Visualização dos Dados (ANTES do treinamento) -->
+        <!-- Dados antes do treino -->
         <section class="card">
-            <h3>👁️ Explorando os Dados <span class="badge">Pré-treinamento</span></h3>
+            <h3>👁️ Dados (Pré-treinamento)</h3>
             <div id="plotData" class="plot-area"></div>
-            <div class="plot-caption">Distribuição das classes no espaço de features</div>
-            <div style="margin-top:0.75rem;display:flex;gap:1rem;flex-wrap:wrap;font-size:0.85rem">
-                <div><strong>📈 Estatísticas:</strong></div>
-                <div id="dataStats">Carregando...</div>
-            </div>
+            <div style="font-size:0.8rem;color:#64748b;margin-top:0.3rem;text-align:center">Distribuição das classes</div>
+            <div id="dataStats" style="margin-top:0.5rem;font-size:0.85rem"></div>
         </section>
 
-        <!-- Visualizações Pós-treinamento -->
+        <!-- Resultados pós-treinamento -->
         <section class="grid-2">
             <div class="card">
-                <h3>📊 Fronteira de Decisão <span class="badge">Pós-treinamento</span></h3>
+                <h3>📊 Fronteira de Decisão</h3>
                 <div id="plotBoundary" class="plot-area">
-                    <div style="color:#64748b;text-align:center">Treine a árvore para ver a fronteira</div>
+                    <div style="color:#64748b;text-align:center">Treine para ver</div>
                 </div>
-                <div class="plot-caption">Regiões classificadas pela árvore + splits visíveis</div>
             </div>
             <div class="card">
                 <h3>🌲 Estrutura da Árvore</h3>
-                <div id="treeViz" class="tree-text">Treine a árvore para ver a estrutura...</div>
-                <div class="plot-caption">Legenda: <span class="split">🔀 Split</span> | <span class="leaf">🍃 Folha</span> | <span class="gain">💰 Ganho</span></div>
+                <div id="treeViz" class="tree-text">Treine para ver...</div>
             </div>
         </section>
 
-        <!-- Cálculos com Explicações -->
+        <!-- Cálculos -->
         <section class="grid-2">
             <div class="card">
-                <h3>📐 Cálculos <span id="calcModeBadge" class="badge">Didático</span></h3>
-                <div class="mode-toggle" style="margin-bottom:0.5rem">
-                    <small style="color:#64748b">Clique nos cálculos para ver detalhes técnicos</small>
-                </div>
-                <div id="calcLog" class="calc-log">
-                    <span class="info">Selecione um dataset e clique em "Treinar" para ver os cálculos passo a passo com explicações...</span>
-                </div>
+                <h3>📐 Cálculos</h3>
+                <div id="calcLog" class="calc-log">Treine para ver os cálculos passo a passo...</div>
             </div>
             <div class="card">
-                <h3>🧮 Fórmula em Uso</h3>
-                <div id="formulaBox" class="formula-box">
-                    \[ Gini(D) = 1 - \sum_{i=1}^{c} p_i^2 \]
-                </div>
-                <div id="formulaExplain" class="formula-explain">
-                    <strong>O que isso significa?</strong><br>
-                    O Índice Gini mede a "impureza" de um grupo: quanto mais misturadas as classes, maior o valor. 
-                    Um split bom <em>reduz</em> essa impureza, separando as classes.
+                <h3>🧮 Fórmula</h3>
+                <div id="formulaBox" class="formula-box">\[ Gini(D) = 1 - \sum p_i^2 \]</div>
+                <div id="formulaExplain" style="font-size:0.85rem;color:#475569;margin-top:0.5rem">
+                    <strong>Significado:</strong> Mede a "mistura" das classes. 0 = puro, alto = misturado.
                 </div>
             </div>
         </section>
 
-        <!-- Métricas com Descrições -->
+        <!-- Métricas -->
         <section class="card">
-            <h3>📈 Métricas do Modelo</h3>
+            <h3>📈 Métricas</h3>
             <div class="metrics">
-                <div class="metric">
-                    <span class="label">Acurácia</span>
-                    <span class="value" id="acc">-</span>
-                    <span class="desc">% de previsões corretas</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Profundidade</span>
-                    <span class="value" id="depth">-</span>
-                    <span class="desc">Níveis de decisão</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Nós Totais</span>
-                    <span class="value" id="nodes">-</span>
-                    <span class="desc">Decisões + folhas</span>
-                </div>
-                <div class="metric">
-                    <span class="label">Folhas</span>
-                    <span class="value" id="leaves">-</span>
-                    <span class="desc">Decisões finais</span>
-                </div>
+                <div class="metric"><span class="label">Acurácia</span><span class="value" id="acc">-</span></div>
+                <div class="metric"><span class="label">Profundidade</span><span class="value" id="depth">-</span></div>
+                <div class="metric"><span class="label">Nós</span><span class="value" id="nodes">-</span></div>
+                <div class="metric"><span class="label">Folhas</span><span class="value" id="leaves">-</span></div>
             </div>
         </section>
     </div>
 
     <script>
-        // ===== ESTADO GLOBAL =====
-        const App = {
-            pyodide: null,
-            X: null, y: null,
-            loaded: false,
-            simpleMode: true  // Modo didático por padrão
-        };
-
-        // ===== INFO DOS DATASETS =====
-        const DATASET_INFO = {
-            moon: {
-                name: "Two Moons 🌙",
-                context: "Dados simulados em formato de duas meias-luas entrelaçadas. Comum para testar classificadores não-lineares.",
-                features: [
-                    { name: "X₁", desc: "Coordenada horizontal no plano 2D" },
-                    { name: "X₂", desc: "Coordenada vertical no plano 2D" }
-                ],
-                target: "Classe 0 (lua inferior) ou Classe 1 (lua superior)",
-                tip: "Observe como as classes se entrelaçam — um desafio para árvores rasas!"
-            },
-            circle: {
-                name: "Concentric Circles ⭕",
-                context: "Dois círculos concêntricos: classe 0 no centro, classe 1 na borda. Problema radial não-linear.",
-                features: [
-                    { name: "X₁", desc: "Coordenada horizontal" },
-                    { name: "X₂", desc: "Coordenada vertical" }
-                ],
-                target: "Classe 0 (círculo interno) ou Classe 1 (círculo externo)",
-                tip: "A árvore precisará de múltiplos splits para aproximar a forma circular!"
-            },
-            linear: {
-                name: "Linear Separable 📈",
-                context: "Dados linearmente separáveis: uma reta consegue dividir as classes perfeitamente.",
-                features: [
-                    { name: "X₁", desc: "Feature 1 (contribui para a separação)" },
-                    { name: "X₂", desc: "Feature 2 (contribui para a separação)" }
-                ],
-                target: "Classe 0 ou 1, separadas por X₁ + X₂ > 0",
-                tip: "Caso ideal para árvores: um único split já pode ter alto ganho!"
-            }
-        };
-
-        // ===== UTILS =====
+        const App = { pyodide: null, X: null, y: null, loaded: false, simpleMode: true };
         const $ = id => document.getElementById(id);
         const escapeHtml = s => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         
         const log = (msg, type='info', explain=null) => {
             const el = $('calcLog');
-            const prefix = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type] || 'ⓘ';
-            const explainHtml = explain && App.simpleMode ? `<br><span class="explain">💡 ${explain}</span>` : '';
-            el.innerHTML += `<span class="${type}">[${prefix}] ${escapeHtml(msg)}${explainHtml}</span><br>`;
+            const prefix = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type];
+            const exp = explain && App.simpleMode ? `<span class="explain">💡 ${explain}</span>` : '';
+            el.innerHTML += `<span class="${type}">[${prefix}] ${escapeHtml(msg)}</span>${exp}<br>`;
             el.scrollTop = el.scrollHeight;
         };
         
-        const setStatus = (msg, type='') => {
-            const el = $('status');
-            el.textContent = msg;
-            el.className = type ? type : '';
+        const setStatus = (msg, cls='') => { const el = $('status'); el.textContent = msg; el.className = cls; };
+
+        const DATASETS = {
+            moon: { name: "Two Moons 🌙", desc: "Meias-luas entrelaçadas — desafio não-linear", tip: "Observe como as classes se misturam!" },
+            circle: { name: "Circles ⭕", desc: "Círculos concêntricos — problema radial", tip: "A árvore precisará de múltiplos splits!" },
+            linear: { name: "Linear 📈", desc: "Separável por uma reta — caso ideal", tip: "Um split já pode ter alto ganho!" }
         };
 
-        // ===== INICIALIZAÇÃO =====
         async function init() {
-            // Slider de profundidade
             $('maxDepth').oninput = e => $('depthVal').textContent = e.target.value;
-            
-            // Botões de dataset
             document.querySelectorAll('[data-ds]').forEach(btn => {
                 btn.onclick = async () => {
                     document.querySelectorAll('[data-ds]').forEach(b => b.classList.remove('active'));
@@ -391,255 +178,147 @@
                     await loadDataset(btn.dataset.ds);
                 };
             });
-            
-            // Botão treinar
             $('trainBtn').onclick = trainTree;
-            
-            // Toggle modo didático/técnico
             $('modeSimple').onclick = () => setMode(true);
             $('modeAdvanced').onclick = () => setMode(false);
-            
-            // Atualizar fórmula ao mudar critério
             $('criterion').onchange = updateFormula;
             
-            // Carregar Pyodide
-            await loadPyodideEnv();
-            
-            // Dataset inicial
+            await loadPyodide();
             await loadDataset('moon');
-            
-            // Renderizar KaTeX
-            if (window.renderMathInElement) {
-                renderMathInElement($('formulaBox'), {delimiters: [
-                    {left: "\\[", right: "\\]", display: true},
-                    {left: "\\(", right: "\\)", display: false}
-                ]});
-            }
+            if (window.renderMathInElement) renderMathInElement($('formulaBox'), {delimiters: [{left:"\\[",right:"\\]",display:true}]});
         }
 
         function setMode(simple) {
             App.simpleMode = simple;
             $('modeSimple').classList.toggle('active', simple);
             $('modeAdvanced').classList.toggle('active', !simple);
-            $('modeIndicator').textContent = simple ? 'Explicações simplificadas' : 'Detalhes técnicos completos';
-            $('calcModeBadge').textContent = simple ? 'Didático' : 'Técnico';
-            log('\n🔄 Modo de explicação alterado. Treine novamente para ver os cálculos no novo formato.', 'info');
+            $('modeLabel').textContent = simple ? 'Linguagem acessível' : 'Detalhes técnicos';
+            updateFormula();
         }
 
-        async function loadPyodideEnv() {
+        async function loadPyodide() {
             try {
                 setStatus('Inicializando Pyodide...', 'loading');
-                App.pyodide = await loadPyodide({
-                    indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/"
-                });
-                
+                App.pyodide = await loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" });
                 await App.pyodide.loadPackage(['numpy', 'matplotlib']);
+                await App.pyodide.runPythonAsync(`import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt`);
                 
-                await App.pyodide.runPythonAsync(`
-                    import matplotlib
-                    matplotlib.use('Agg')
-                    import matplotlib.pyplot as plt
-                `);
-                
-                // Carregar código Python
-                setStatus('Carregando módulo Decision Tree...', 'loading');
-                const response = await fetch('decision_tree_educational.py');
+                const response = await fetch('decision_tree_educational.py?v=' + Date.now());
                 const pyCode = await response.text();
                 await App.pyodide.runPythonAsync(pyCode);
                 
                 App.loaded = true;
-                setStatus('Ambiente pronto! ✓', 'success');
-                log('✅ Ambiente carregado. Selecione um dataset para começar!', 'success');
+                setStatus('Pronto! ✓', '');
+                log('✅ Ambiente carregado', 'success');
             } catch (err) {
                 console.error(err);
-                setStatus('Erro ao carregar ambiente.', 'error');
-                log(`❌ Erro: ${err.message}`, 'error');
+                setStatus('Erro ao carregar', 'error');
+                log(`❌ ${err.message}`, 'error');
             }
         }
 
         async function loadDataset(type) {
-            if (!App.loaded) return setStatus('Aguarde...', 'loading');
-            
-            // Atualizar info do dataset na UI
-            const info = DATASET_INFO[type];
-            $('datasetInfo').innerHTML = `
-                <h4>📊 Dataset: ${info.name}</h4>
-                <p><strong>Contexto:</strong> ${info.context}</p>
-                <p><strong>Features:</strong> ${info.features.map(f => 
-                    `<span class="tooltip feature-tag" title="${f.desc}">${f.name}</span>`
-                ).join(' ')}</p>
-                <p><strong>Target:</strong> ${info.target}</p>
-                <p><small>💡 <em>Dica: ${info.tip}</em></small></p>
-            `;
+            if (!App.loaded) return;
+            const info = DATASETS[type];
+            $('datasetInfo').innerHTML = `<h4>📊 ${info.name}</h4><p>${info.desc}</p><p><strong>Features:</strong> <span class="feature-tag">X₁</span> <span class="feature-tag">X₂</span></p><p><small>💡 ${info.tip}</small></p>`;
             
             try {
-                log(`\n📦 Carregando dataset '${type}'...`, 'info', 'Dados sintéticos gerados para fins educacionais');
-                
+                log(`\n📦 Carregando '${type}'...`);
                 const result = await App.pyodide.runPythonAsync(`
-                    import json
+                    import json, numpy as np
                     _X, _y = generate_dataset('${type}')
-                    # Estatísticas básicas
-                    stats = {
-                        'n_samples': len(_y),
-                        'n_features': _X.shape[1],
-                        'classes': {int(c): int(np.sum(_y==c)) for c in np.unique(_y)},
-                        'x_range': [float(_X[:,0].min()), float(_X[:,0].max())],
-                        'y_range': [float(_X[:,1].min()), float(_X[:,1].max())]
-                    }
+                    stats = {'n': len(_y), 'classes': {int(c): int(np.sum(_y==c)) for c in np.unique(_y)}}
                     json.dumps({'X': _X.tolist(), 'y': _y.tolist(), 'stats': stats})
                 `);
                 const data = JSON.parse(result);
-                App.X = data.X; 
-                App.y = data.y;
-                
-                // Plot dos dados + estatísticas
+                App.X = data.X; App.y = data.y;
                 await plotData(data.X, data.y);
-                updateDataStats(data.stats);
-                
-                log(`✓ Dataset carregado: ${data.stats.n_samples} amostras, ${data.stats.n_features} features`, 'success');
-                
-                // Resetar visualizações pós-treinamento
-                $('treeViz').textContent = 'Treine a árvore para ver a estrutura...';
-                $('plotBoundary').innerHTML = '<div style="color:#64748b;text-align:center">Treine a árvore para ver a fronteira</div>';
-                resetMetrics();
-                
-            } catch (err) {
-                log(`❌ Erro: ${err.message}`, 'error');
-            }
-        }
-
-        function updateDataStats(stats) {
-            const classDist = Object.entries(stats.classes)
-                .map(([cls, cnt]) => `Classe ${cls}: ${cnt}`)
-                .join(' | ');
-            $('dataStats').innerHTML = `
-                <strong>${stats.n_samples}</strong> amostras | 
-                <strong>${stats.n_features}</strong> features | 
-                ${classDist} | 
-                X: [${stats.x_range[0].toFixed(2)}, ${stats.x_range[1].toFixed(2)}]
-            `;
+                $('dataStats').innerHTML = `<strong>${data.stats.n}</strong> amostras | ${Object.entries(data.stats.classes).map(([c,n])=>`Classe ${c}: ${n}`).join(' | ')}`;
+                log(`✓ ${data.stats.n} amostras carregadas`, 'success');
+                $('treeViz').textContent = 'Treine para ver...';
+                $('plotBoundary').innerHTML = '<div style="color:#64748b;text-align:center">Treine para ver</div>';
+                ['acc','depth','nodes','leaves'].forEach(id => $(id).textContent = '-');
+            } catch (err) { log(`❌ ${err.message}`, 'error'); }
         }
 
         async function plotData(X, y) {
-            const b64 = await App.pyodide.runPythonAsync(`
-                import numpy as np, matplotlib.pyplot as plt, io, base64
-                X, y = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
-                fig, ax = plt.subplots(figsize=(5,4), dpi=100)
-                for cls in np.unique(y):
-                    m = y == cls
-                    ax.scatter(X[m,0], X[m,1], label=f'Classe {int(cls)}', 
-                              edgecolors='white', s=35, alpha=0.9)
-                ax.set_xlabel('Feature 1 (X₁)'); ax.set_ylabel('Feature 2 (X₂)')
-                ax.legend(fontsize=8, loc='lower right'); ax.grid(alpha=0.3)
-                ax.set_title('Distribuição dos Dados (Pré-treinamento)')
-                buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight')
-                plt.close(fig); base64.b64encode(buf.getvalue()).decode('utf-8')
-            `);
-            const b64Str = typeof b64 === 'string' ? b64 : b64.toString();
-            $('plotData').innerHTML = `<img src="image/png;base64,${b64Str}" alt="Dados">`;
+            try {
+                const b64 = await App.pyodide.runPythonAsync(`
+                    import numpy as np, matplotlib.pyplot as plt, io, base64
+                    X, y = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
+                    fig, ax = plt.subplots(figsize=(4.5,3.5), dpi=100)
+                    for cls in np.unique(y):
+                        m = y == cls
+                        ax.scatter(X[m,0], X[m,1], label=f'Classe {int(cls)}', edgecolors='white', s=30)
+                    ax.set_xlabel('X₁'); ax.set_ylabel('X₂'); ax.legend(fontsize=7); ax.grid(alpha=0.3)
+                    ax.set_title('Dados')
+                    buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight'); plt.close(fig)
+                    base64.b64encode(buf.getvalue()).decode('utf-8')
+                `);
+                // ✅ Converter PyProxy para string JavaScript
+                const b64Str = typeof b64 === 'string' ? b64 : (b64.toString ? b64.toString() : String(b64));
+                if (b64Str && b64Str.length > 100) {
+                    $('plotData').innerHTML = `<img src="data:image/png;base64,${b64Str}" alt="Dados">`;
+                } else {
+                    $('plotData').innerHTML = '<div style="color:#ef4444">❌ Erro ao gerar imagem</div>';
+                }
+            } catch (err) {
+                console.error(err);
+                $('plotData').innerHTML = `<div style="color:#ef4444;text-align:center;padding:1rem">❌ Erro: ${escapeHtml(err.message)}</div>`;
+            }
         }
 
         async function trainTree() {
             if (!App.loaded || !App.X) return;
-            
-            $('trainBtn').disabled = true;
-            $('trainBtn').textContent = '🔄 Treinando...';
-            $('calcLog').innerHTML = '';
-            setStatus('Treinando árvore...', 'loading');
+            $('trainBtn').disabled = true; $('trainBtn').textContent = '🔄 Treinando...';
+            $('calcLog').innerHTML = ''; setStatus('Treinando...', 'loading');
             
             try {
-                const params = {
-                    criterion: $('criterion').value,
-                    max_depth: parseInt($('maxDepth').value),
-                    min_samples: parseInt($('minSamples').value),
-                    simple_mode: App.simpleMode ? 1 : 0
-                };
-                
+                const p = { criterion: $('criterion').value, max_depth: parseInt($('maxDepth').value), simple: App.simpleMode ? 1 : 0 };
                 const logs = await App.pyodide.runPythonAsync(`
                     import numpy as np, json
-                    
-                    _tree = EducationalDecisionTree(
-                        criterion='${params.criterion}',
-                        max_depth=${params.max_depth},
-                        min_samples_split=${params.min_samples},
-                        verbose_simple=True if ${params.simple_mode} else False
-                    )
-                    
+                    _tree = EducationalDecisionTree(criterion='${p.criterion}', max_depth=${p.max_depth}, simple_mode=${p.simple})
                     logs = _tree.fit(_X, _y)
                     _metrics = _tree.get_metrics(_X, _y)
                     json.dumps({'logs': logs, 'metrics': _metrics})
                 `);
-                
                 const result = JSON.parse(logs);
-                
-                result.logs.forEach(entry => {
-                    const {msg, type, explain} = typeof entry === 'object' ? entry : {msg: entry, type: 'info', explain: null};
-                    log(msg, type, explain);
-                });
-                
-                await Promise.all([
-                    plotDecisionBoundary(),
-                    plotTreeStructure(),
-                    updateMetrics(result.metrics),
-                    updateFormula()
-                ]);
-                
-                setStatus('Treinamento concluído! ✓', 'success');
-                
-            } catch (err) {
-                console.error(err);
-                log(`❌ Erro: ${err.message}`, 'error');
-                setStatus('Erro no treinamento', 'error');
-            } finally {
-                $('trainBtn').disabled = false;
-                $('trainBtn').textContent = '🔄 Treinar Árvore';
-            }
+                result.logs.forEach(e => { const {msg,type,explain} = typeof e==='object'?e:{msg:e,type:'info'}; log(msg,type,explain); });
+                await Promise.all([plotBoundary(), plotTree(), updateMetrics(result.metrics), updateFormula()]);
+                setStatus('Concluído! ✓', '');
+            } catch (err) { console.error(err); log(`❌ ${err.message}`, 'error'); setStatus('Erro', 'error'); }
+            finally { $('trainBtn').disabled = false; $('trainBtn').textContent = '🔄 Treinar'; }
         }
 
-        async function plotDecisionBoundary() {
-            const b64 = await App.pyodide.runPythonAsync(`plot_boundary(_tree, _X, _y)`);
-            const b64Str = typeof b64 === 'string' ? b64 : b64.toString();
-            $('plotBoundary').innerHTML = `<img src="image/png;base64,${b64Str}" alt="Fronteira" style="max-width:100%;height:auto;">`;
+        async function plotBoundary() {
+            try {
+                const b64 = await App.pyodide.runPythonAsync(`plot_boundary(_tree, _X, _y)`);
+                const b64Str = typeof b64 === 'string' ? b64 : (b64.toString ? b64.toString() : String(b64));
+                if (b64Str && b64Str.length > 100) {
+                    $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64Str}" alt="Fronteira" style="max-width:100%;height:auto;">`;
+                }
+            } catch (err) { $('plotBoundary').innerHTML = `<div style="color:#ef4444;text-align:center">❌ ${escapeHtml(err.message)}</div>`; }
         }
 
-        async function plotTreeStructure() {
-            const text = await App.pyodide.runPythonAsync(`tree_to_text(_tree, simple=${App.simpleMode ? 'True' : 'False'})`);
-            const textStr = typeof text === 'string' ? text : text.toString();
-            $('treeViz').textContent = textStr || 'Árvore vazia';
+        async function plotTree() {
+            try {
+                const text = await App.pyodide.runPythonAsync(`tree_to_text(_tree, simple=${App.simpleMode})`);
+                $('treeViz').textContent = typeof text === 'string' ? text : text.toString();
+            } catch (err) { $('treeViz').textContent = `❌ ${err.message}`; }
         }
 
         function updateMetrics(m) {
-            $('acc').textContent = (m.accuracy * 100).toFixed(1) + '%';
-            $('depth').textContent = m.max_depth;
-            $('nodes').textContent = m.total_nodes;
-            $('leaves').textContent = m.leaf_count;
-        }
-
-        function resetMetrics() {
-            ['acc','depth','nodes','leaves'].forEach(id => $(id).textContent = '-');
+            $('acc').textContent = (m.accuracy*100).toFixed(1)+'%'; $('depth').textContent = m.max_depth;
+            $('nodes').textContent = m.total_nodes; $('leaves').textContent = m.leaf_count;
         }
 
         function updateFormula() {
             const crit = $('criterion').value;
-            const formulas = {
-                gini: {
-                    latex: `Gini(D) = 1 - \\\\sum_{i=1}^{c} p_i^2`,
-                    simple: "O Índice Gini mede a 'mistura' das classes. Quanto mais puro o grupo (só uma classe), menor o Gini.",
-                    advanced: "Gini = 1 - Σpᵢ², onde pᵢ é a proporção da classe i. Varia de 0 (puro) a 0.5 (máxima impureza para 2 classes)."
-                },
-                entropy: {
-                    latex: `Entropia(D) = -\\\\sum_{i=1}^{c} p_i \\\\log_2(p_i)`,
-                    simple: "Entropia mede a 'desordem' das classes. Zero = grupo puro, valor alto = classes misturadas.",
-                    advanced: "Entropia = -Σpᵢ·log₂(pᵢ). Base 2 mede em 'bits'. Máxima quando todas as classes têm igual probabilidade."
-                }
-            };
-            const f = formulas[crit];
-            $('formulaBox').innerHTML = `\\[${f.latex}\\]`;
-            $('formulaExplain').innerHTML = `<strong>O que isso significa?</strong><br>${App.simpleMode ? f.simple : f.advanced}`;
-            
-            if (window.renderMathInElement) {
-                renderMathInElement($('formulaBox'), {delimiters: [{left: "\\[", right: "\\]", display: true}]});
-            }
+            const f = { gini: { tex: `Gini(D) = 1 - \\\\sum p_i^2`, simple: "Mede a 'mistura' das classes. 0 = puro.", tech: "Gini = 1 - Σpᵢ², onde pᵢ é proporção da classe i." },
+                        entropy: { tex: `Entropia(D) = -\\\\sum p_i \\\\log_2(p_i)`, simple: "Mede 'desordem'. 0 = certeza, alto = incerteza.", tech: "Entropia = -Σpᵢ·log₂(pᵢ), medida em bits." } };
+            $('formulaBox').innerHTML = `\\[${f[crit].tex}\\]`;
+            $('formulaExplain').innerHTML = `<strong>Significado:</strong> ${App.simpleMode ? f[crit].simple : f[crit].tech}`;
+            if (window.renderMathInElement) renderMathInElement($('formulaBox'), {delimiters: [{left:"\\[",right:"\\]",display:true}]});
         }
 
         document.addEventListener('DOMContentLoaded', init);
