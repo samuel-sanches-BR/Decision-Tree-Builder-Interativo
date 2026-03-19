@@ -557,12 +557,14 @@
                 
                 const logs = await App.pyodide.runPythonAsync(`
                     import numpy as np, json
+                    
                     _tree = EducationalDecisionTree(
                         criterion='${params.criterion}',
                         max_depth=${params.max_depth},
                         min_samples_split=${params.min_samples},
-                        verbose_simple=${params.simple_mode}
+                        verbose_simple=True if ${params.simple_mode} else False
                     )
+                    
                     logs = _tree.fit(_X, _y)
                     _metrics = _tree.get_metrics(_X, _y)
                     json.dumps({'logs': logs, 'metrics': _metrics})
@@ -570,7 +572,6 @@
                 
                 const result = JSON.parse(logs);
                 
-                // Exibir logs com explicações
                 result.logs.forEach(entry => {
                     const {msg, type, explain} = typeof entry === 'object' ? entry : {msg: entry, type: 'info', explain: null};
                     log(msg, type, explain);
