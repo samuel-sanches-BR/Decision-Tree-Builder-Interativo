@@ -34,7 +34,7 @@ class EducationalDecisionTree:
         self.criterion = criterion
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
-        self.verbose_simple = verbose_simple  # Modo didático
+        self.verbose_simple = verbose_simple if verbose_simple is not None else True
         self.root = None
         self._node_id = 0
         self.logs = []
