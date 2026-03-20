@@ -372,7 +372,7 @@
 
 </div><!-- .page -->
 
-<!-- ═══════════════════════════ PYTHON (embedded, bug fixed) ═══════════════════════════ -->
+<!-- ═══════════════════════════ PYTHON (embedded) ═══════════════════════════ -->
 <script id="pyCode" type="text/x-python">
 """Decision Tree Educacional"""
 import numpy as np
@@ -393,7 +393,6 @@ class EducationalDecisionTree:
         self.root, self._nid, self.logs = None, 0, []
 
     def _log(self, msg, indent=0, explain=None, lvl='info'):
-        # BUG FIX: garantir que indent seja sempre int
         e = {'msg': "  " * int(indent) + msg, 'type': lvl}
         if explain and self.simple: e['explain'] = explain
         self.logs.append(e)
