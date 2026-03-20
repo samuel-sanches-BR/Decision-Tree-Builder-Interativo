@@ -469,11 +469,13 @@ class EducationalDecisionTree:
 
     # ── busca do melhor split ──────────────────────────────────
     def _best_split(self, X, y):
-        """Retorna (feat, thresh, gain, mask_esq, mask_dir)."""
-        best_g, best_f, best_t = -1, None, None
-        pi = self._imp_value(y)
-        n  = len(y)
+        """Retorna (feat, thresh, gain, mask_esq, mask_dir, best_por_feature).
+        best_por_feature = {feat_idx: (thresh, gain)} — melhor limiar de cada feature."""
+        pi  = self._imp_value(y)
+        n   = len(y)
+        best_per_feat = {}
         for f in range(X.shape[1]):
+            bf_g, bf_t = -1, None
             for t in np.unique(X[:, f]):
                 lm = X[:, f] <= t
                 rm = ~lm
@@ -482,12 +484,16 @@ class EducationalDecisionTree:
                 il = self._imp_value(y[lm])
                 ir = self._imp_value(y[rm])
                 g  = pi - (lm.sum()/n * il + rm.sum()/n * ir)
-                if g > best_g:
-                    best_g, best_f, best_t = g, f, t
-        if best_f is None:
-            return None, None, -1, None, None
+                if g > bf_g:
+                    bf_g, bf_t = g, t
+            if bf_t is not None:
+                best_per_feat[f] = (bf_t, bf_g)
+        if not best_per_feat:
+            return None, None, -1, None, None, {}
+        best_f = max(best_per_feat, key=lambda f: best_per_feat[f][1])
+        best_t, best_g = best_per_feat[best_f]
         lm = X[:, best_f] <= best_t
-        return best_f, best_t, best_g, lm, ~lm
+        return best_f, best_t, best_g, lm, ~lm, best_per_feat
 
     # ── construção recursiva ───────────────────────────────────
     def _build(self, X, y, d=0):
@@ -506,18 +512,40 @@ class EducationalDecisionTree:
         self._log(f'  Amostras chegando aqui: {node.samples}')
         self._log(f'  {self._dist_str(y)}')
 
-        # ── 2. Impureza atual ──────────────────────────────────
+        # ── 2. Critério (só na raiz) ───────────────────────────
+        if self.simple and d == 0:
+            self._log(f'')
+            if self.crit == 'gini':
+                self._log(f'  ℹ Critério escolhido: Gini')
+                self._log(f'    Pergunta: "se eu sortear uma amostra aleatória e')
+                self._log(f'    tentar adivinhar a classe, qual a chance de errar?"')
+                self._log(f'    Gini = 0  →  nó puro (acerto garantido)')
+                self._log(f'    Gini = 0.5 →  máxima confusão (50% chance de erro)')
+                self._log(f'    Efeito: tende a isolar a classe mais frequente logo no')
+                self._log(f'    primeiro corte, produzindo splits assimétricos.')
+            else:
+                self._log(f'  ℹ Critério escolhido: Entropia')
+                self._log(f'    Pergunta: "quantos bits de informação são necessários')
+                self._log(f'    para descrever a classe de uma amostra deste nó?"')
+                self._log(f'    Entropia = 0 bits  →  certeza total (1 classe só)')
+                self._log(f'    Entropia = 1 bit   →  máxima incerteza (50/50)')
+                self._log(f'    Efeito: penaliza mais splits que ainda deixam nós')
+                self._log(f'    misturados; pode preferir cortes mais "equilibrados".')
+                self._log(f'    Por isso Gini e Entropia às vezes escolhem features')
+                self._log(f'    ou limiares diferentes — e isso muda a árvore toda,')
+                self._log(f'    pois cada nó filho herda as amostras do pai.')
+
+        # ── 3. Impureza atual ──────────────────────────────────
         imp, imp_lines = self._calc_imp(y)
         node.imp = imp
         self._log(f'')
         self._log(f'  📐 Impureza atual ({crit}):')
         for l in imp_lines:
             self._log(l)
-        self._log(f'  ↳ Impureza deste nó = {imp:.3f}' +
-                  ('  (0 = perfeito, 0.5 = pior caso)' if self.crit=='gini' and self.simple else
-                   '  (0 bits = certeza, 1 bit = máxima incerteza)' if self.simple else ''))
+        hint = '  (0 = nó puro, 0.5 = máxima mistura)' if self.crit=='gini' else '  (0 = certeza, 1 bit = máxima incerteza)'
+        self._log(f'  ↳ Impureza deste nó = {imp:.3f}' + (hint if self.simple else ''))
 
-        # ── 3. Critério de parada ──────────────────────────────
+        # ── 4. Critério de parada ──────────────────────────────
         puro    = len(np.unique(y)) == 1
         fundo   = d >= self.max_d
         pequeno = node.samples < self.min_s
@@ -531,24 +559,39 @@ class EducationalDecisionTree:
             self._log(f'     Motivo: {razao}', 'success')
             return node
 
-        # ── 4. Busca do melhor split ───────────────────────────
-        n_splits = sum(len(np.unique(X[:, f])) - 1 for f in range(X.shape[1]))
-        self._log(f'')
-        self._log(f'  🔍 Buscando o melhor corte...')
-        if self.simple:
-            self._log(f'     (testamos ~{n_splits} combinações de feature × valor)')
-
-        f, t, g, lm, rm = self._best_split(X, y)
+        # ── 5. Disputa entre features ──────────────────────────
+        f, t, g, lm, rm, ranking = self._best_split(X, y)
         if f is None or g <= 1e-7:
             node.value = Counter(y).most_common(1)[0][0]
-            self._log(f'  ⚠ Nenhum corte melhora a impureza  →  FOLHA: Classe {node.value}', 'warn')
+            self._log(f'  ⚠ Nenhum corte reduz a impureza  →  FOLHA: Classe {node.value}', 'warn')
             return node
 
         node.feat, node.thresh, node.gain = f, t, g
-        fn  = self._feat(f, short=False)
         fsh = self._feat(f, short=True)
 
-        # ── 5. O que cada lado recebe ──────────────────────────
+        self._log(f'')
+        self._log(f'  🔍 Qual feature separa melhor as classes aqui?')
+        if self.simple:
+            self._log(f'     Para cada feature, encontramos o limiar que dá o maior ganho.')
+            self._log(f'     Comparando as features:')
+        self._log(f'')
+
+        sorted_feats = sorted(ranking.items(), key=lambda x: x[1][1], reverse=True)
+        for feat_i, (thresh_i, gain_i) in sorted_feats:
+            fn_i   = self._feat(feat_i, short=True)
+            winner = '  ← vencedor' if feat_i == f else ''
+            self._log(f'     {fn_i}:  melhor limiar = {thresh_i:.3f}  →  ganho = {gain_i:.3f}{winner}', 'split')
+
+        if self.simple and len(sorted_feats) > 1:
+            runner_f, (runner_t, runner_g) = sorted_feats[1]
+            runner_fn = self._feat(runner_f, short=True)
+            diff = g - runner_g
+            self._log(f'')
+            self._log(f'     {fsh} ganha por {diff:.3f} de ganho a mais que {runner_fn}.')
+            self._log(f'     Se o critério fosse outro, essa diferença poderia mudar')
+            self._log(f'     e {runner_fn} poderia vencer — alterando toda a árvore.')
+
+        # ── 6. O que cada lado recebe ──────────────────────────
         y_esq, y_dir = y[lm], y[rm]
         n_esq, n_dir = lm.sum(), rm.sum()
         imp_esq      = self._imp_value(y_esq)
@@ -558,9 +601,9 @@ class EducationalDecisionTree:
         imp_ponderada = w_esq * imp_esq + w_dir * imp_dir
 
         self._log(f'')
-        self._log(f'  ✂ Melhor corte encontrado:  {fsh} ≤ {t:.3f}')
+        self._log(f'  ✂ Corte escolhido:  {fsh} ≤ {t:.3f}')
         self._log(f'')
-        self._log(f'  O que cada lado recebe:')
+        self._log(f'  O que cada lado recebe com esse corte:')
         self._log(f'')
         self._log(f'  ← Esquerda  ({fsh} ≤ {t:.3f}):  {n_esq} amostras', 'split')
         self._log(f'       {self._dist_str(y_esq)}', 'split')
@@ -570,24 +613,24 @@ class EducationalDecisionTree:
         self._log(f'       {self._dist_str(y_dir)}', 'split')
         self._log(f'       {crit} = {imp_dir:.3f}', 'split')
 
-        # ── 6. Cálculo do ganho ────────────────────────────────
+        # ── 7. Cálculo do ganho ────────────────────────────────
         self._log(f'')
-        self._log(f'  📊 Calculando o Ganho de Informação:')
+        self._log(f'  📊 Ganho de Informação deste corte:')
         self._log(f'')
-        self._log(f'     Ganho = Impureza do pai  −  média ponderada dos filhos')
+        self._log(f'     Ganho = Impureza do pai − média ponderada dos filhos')
         self._log(f'')
-        self._log(f'     Impureza do pai  = {imp:.3f}')
-        self._log(f'     Esquerda: peso {n_esq}/{node.samples} × {crit} {imp_esq:.3f} = {w_esq*imp_esq:.3f}')
-        self._log(f'     Direita:  peso {n_dir}/{node.samples} × {crit} {imp_dir:.3f} = {w_dir*imp_dir:.3f}')
-        self._log(f'     Média ponderada = {w_esq*imp_esq:.3f} + {w_dir*imp_dir:.3f} = {imp_ponderada:.3f}')
+        self._log(f'     Impureza do pai             = {imp:.3f}')
+        self._log(f'     Esquerda: {n_esq}/{node.samples} × {imp_esq:.3f} = {w_esq*imp_esq:.3f}')
+        self._log(f'     Direita:  {n_dir}/{node.samples} × {imp_dir:.3f} = {w_dir*imp_dir:.3f}')
+        self._log(f'     Média ponderada dos filhos  = {w_esq*imp_esq:.3f} + {w_dir*imp_dir:.3f} = {imp_ponderada:.3f}')
         self._log(f'')
         self._log(f'  ✅ Ganho = {imp:.3f} − {imp_ponderada:.3f} = {g:.3f}', 'success')
         if self.simple:
-            self._log(f'     (quanto maior o ganho, melhor o corte)', 'success')
+            self._log(f'     Esse é o ganho mais alto entre todas as features — por isso esse corte foi escolhido.', 'success')
 
-        # ── 7. Divide e recursa ────────────────────────────────
+        # ── 8. Divide e recursa ────────────────────────────────
         self._log(f'')
-        self._log(f'  ✂ Dividindo: {n_esq} amostras  ←  {fsh} ≤ {t:.3f}  →  {n_dir} amostras')
+        self._log(f'  ✂ Dividindo: {n_esq} ← {fsh} ≤ {t:.3f} → {n_dir}')
 
         node.left  = self._build(X[lm], y[lm], d + 1)
         node.right = self._build(X[rm], y[rm], d + 1)
