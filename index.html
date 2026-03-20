@@ -400,7 +400,7 @@
 
 </div><!-- .page -->
 
-<!-- ═══════════════════════════ PYTHON (embedded, bug fixed) ═══════════════════════════ -->
+<!-- ═══════════════════════════ PYTHON (embedded) ═══════════════════════════ -->
 <script id="pyCode" type="text/x-python">
 """Decision Tree Educacional"""
 import numpy as np
@@ -415,154 +415,222 @@ class Node:
     def is_leaf(self): return self.value is not None
 
 class EducationalDecisionTree:
+    FEAT_NAMES = ['X₁ (horizontal)', 'X₂ (vertical)']
+    FEAT_SHORT  = ['X₁', 'X₂']
+    NIVEIS      = ['Raiz', 'Nível 1', 'Nível 2', 'Nível 3', 'Nível 4', 'Nível 5']
+
     def __init__(self, criterion='gini', max_depth=3, min_samples_split=2, simple_mode=True):
         self.crit, self.max_d, self.min_s = criterion, max_depth, min_samples_split
         self.simple = simple_mode
         self.root, self._nid, self.logs = None, 0, []
 
-    FEAT_NAMES = ['X₁ (horizontal)', 'X₂ (vertical)']
-    FEAT_SHORT  = ['X₁', 'X₂']
-
-    def _log(self, msg, indent=0, explain=None, lvl='info'):
-        e = {'msg': "  " * int(indent) + msg, 'type': lvl}
-        if explain and self.simple: e['explain'] = explain
-        self.logs.append(e)
+    # ── helpers ────────────────────────────────────────────────
+    def _log(self, msg, lvl='info'):
+        self.logs.append({'msg': msg, 'type': lvl})
 
     def _feat(self, f, short=False):
         names = self.FEAT_SHORT if short else self.FEAT_NAMES
         return names[f] if f < len(names) else f'X{f+1}'
 
-    def _gini(self, y):
-        if not len(y): return 0, []
-        cnt, n, g = Counter(y), len(y), 1.0
-        classes_str = ', '.join(f'Classe {c}: {v}' for c, v in sorted(cnt.items()))
-        if self.simple:
-            steps = [f"📊 {classes_str}"]
+    def _dist_str(self, y):
+        cnt = Counter(y)
+        return '  '.join(f'Classe {c}: {v}' for c, v in sorted(cnt.items()))
+
+    # ── impureza ───────────────────────────────────────────────
+    def _calc_imp(self, y):
+        """Retorna (valor_impureza, linhas_explicacao)."""
+        cnt, n = Counter(y), len(y)
+        if self.crit == 'gini':
+            g = 1.0
+            lines = []
+            parts = []
             for c, v in sorted(cnt.items()):
-                p = v/n; g -= p**2
-                steps.append(f"   Classe {c} → {v}/{n} = {p:.1%}  →  p² = {p**2:.3f}")
-            steps.append(f"✅ Gini = 1 − {' − '.join(f'{(v/n)**2:.3f}' for _,v in sorted(cnt.items()))} = {g:.3f}")
+                p = v / n; g -= p**2; parts.append(f'{p**2:.3f}')
+                if self.simple:
+                    lines.append(f'    Classe {c}: {v}/{n} = {p:.1%}  →  p² = {p**2:.3f}')
+            formula = f'  Gini = 1 − ({" + ".join(parts)}) = {g:.3f}'
+            return g, lines + [formula]
         else:
-            for _, v in cnt.items(): p = v/n; g -= p**2
-            steps = [f"Gini = {g:.4f}   ({classes_str})"]
-        return g, steps
-
-    def _ent(self, y):
-        if not len(y): return 0, []
-        cnt, n, e = Counter(y), len(y), 0.0
-        classes_str = ', '.join(f'Classe {c}: {v}' for c, v in sorted(cnt.items()))
-        if self.simple:
-            steps = [f"📊 {classes_str}"]
+            e = 0.0
+            lines = []
+            parts = []
             for c, v in sorted(cnt.items()):
-                p = v/n
-                h = -p*math.log2(p) if p > 0 else 0; e += h
-                steps.append(f"   Classe {c} → {p:.1%}  →  −p·log₂(p) = {h:.3f}")
-            steps.append(f"✅ Entropia = {e:.3f} bits  (0 = certeza total)")
-        else:
-            for _, v in cnt.items():
-                p = v/n
-                if p > 0: e += -p*math.log2(p)
-            steps = [f"H = {e:.4f} bits   ({classes_str})"]
-        return e, steps
+                p = v / n
+                h = -p * math.log2(p) if p > 0 else 0
+                e += h; parts.append(f'{h:.3f}')
+                if self.simple:
+                    lines.append(f'    Classe {c}: {v}/{n} = {p:.1%}  →  −p·log₂(p) = {h:.3f}')
+            formula = f'  Entropia = {" + ".join(parts)} = {e:.3f} bits'
+            return e, lines + [formula]
 
-    def _imp(self, y): return (self._gini if self.crit=='gini' else self._ent)(y)
+    def _imp_value(self, y):
+        v, _ = self._calc_imp(y)
+        return v
 
-    def _gain(self, y, yl, yr):
-        pi, ps = self._imp(y); n, nl, nr = len(y), len(yl), len(yr)
-        if nl==0 or nr==0: return -1, ps+["⚠ Split inválido"]
-        il, _ = self._imp(yl); ir, _ = self._imp(yr)
-        w = (nl/n)*il + (nr/n)*ir; g = pi - w
-        if self.simple:
-            steps = ps + [
-                f"   ↳ Esquerda: {nl} amostras  →  impureza {il:.3f}",
-                f"   ↳ Direita:  {nr} amostras  →  impureza {ir:.3f}",
-                f"✅ Ganho = {pi:.3f} − ({nl}/{n}×{il:.3f} + {nr}/{n}×{ir:.3f}) = {g:.3f}",
-            ]
-        else:
-            steps = ps + [f"Gain = {pi:.4f} − ({nl}/{n})·{il:.4f} − ({nr}/{n})·{ir:.4f} = {g:.4f}"]
-        return g, steps
-
+    # ── busca do melhor split ──────────────────────────────────
     def _best_split(self, X, y):
-        bg, bf, bt, bs = -1, None, None, []
+        """Retorna (feat, thresh, gain, mask_esq, mask_dir)."""
+        best_g, best_f, best_t = -1, None, None
+        pi = self._imp_value(y)
+        n  = len(y)
         for f in range(X.shape[1]):
-            for t in np.unique(X[:,f]):
-                l, r = X[:,f]<=t, ~(X[:,f]<=t)
-                if np.sum(l)==0 or np.sum(r)==0: continue
-                g, s = self._gain(y, y[l], y[r])
-                if g > bg: bg, bf, bt, bs = g, f, t, s
-        return bf, bt, bg, bs
+            for t in np.unique(X[:, f]):
+                lm = X[:, f] <= t
+                rm = ~lm
+                if lm.sum() == 0 or rm.sum() == 0:
+                    continue
+                il = self._imp_value(y[lm])
+                ir = self._imp_value(y[rm])
+                g  = pi - (lm.sum()/n * il + rm.sum()/n * ir)
+                if g > best_g:
+                    best_g, best_f, best_t = g, f, t
+        if best_f is None:
+            return None, None, -1, None, None
+        lm = X[:, best_f] <= best_t
+        return best_f, best_t, best_g, lm, ~lm
 
+    # ── construção recursiva ───────────────────────────────────
     def _build(self, X, y, d=0):
-        n = Node(depth=d, nid=self._nid); self._nid += 1
-        n.samples, n.dist = len(y), dict(Counter(y)); n.imp, st = self._imp(y)
-        indent = d
-        # ── Cabeçalho do nó ──
-        nivel = ['Raiz', 'Nível 1', 'Nível 2', 'Nível 3', 'Nível 4', 'Nível 5']
-        label = nivel[d] if d < len(nivel) else f'Nível {d}'
-        self._log(f"\n{'━'*30}", indent)
-        self._log(f"🌲 Nó #{n.nid}  [{label}]  —  {n.samples} amostras", indent)
-        # ── Impureza ──
-        crit_name = 'Gini' if self.crit == 'gini' else 'Entropia'
-        self._log(f"📐 Calculando {crit_name}:", indent)
-        for s in st: self._log(s, indent)
-        # ── Critério de parada ──
-        if d>=self.max_d or len(np.unique(y))==1 or n.samples<self.min_s:
-            n.value = Counter(y).most_common(1)[0][0]
-            reason = "profundidade máxima atingida" if d>=self.max_d else ("nó puro" if len(np.unique(y))==1 else "poucas amostras")
-            self._log(f"🍃 FOLHA  →  Classe {n.value}  ({reason})", indent, lvl='success')
-            return n
-        # ── Melhor split ──
-        f, t, g, st = self._best_split(X, y)
-        if f is None or g<=1e-7:
-            n.value = Counter(y).most_common(1)[0][0]
-            self._log(f"⚠ Sem ganho válido  →  FOLHA: Classe {n.value}", indent, lvl='warn')
-            return n
-        feat_label = self._feat(f, short=not self.simple)
+        node = Node(depth=d, nid=self._nid); self._nid += 1
+        node.samples = len(y)
+        node.dist    = dict(Counter(y))
+
+        nivel = self.NIVEIS[d] if d < len(self.NIVEIS) else f'Nível {d}'
+        crit  = 'Gini' if self.crit == 'gini' else 'Entropia'
+
+        # ── 1. Cabeçalho ──────────────────────────────────────
+        self._log(f'')
+        self._log(f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+        self._log(f'🌲 Nó #{node.nid}  [{nivel}]')
+        self._log(f'')
+        self._log(f'  Amostras chegando aqui: {node.samples}')
+        self._log(f'  {self._dist_str(y)}')
+
+        # ── 2. Impureza atual ──────────────────────────────────
+        imp, imp_lines = self._calc_imp(y)
+        node.imp = imp
+        self._log(f'')
+        self._log(f'  📐 Impureza atual ({crit}):')
+        for l in imp_lines:
+            self._log(l)
+        self._log(f'  ↳ Impureza deste nó = {imp:.3f}' +
+                  ('  (0 = perfeito, 0.5 = pior caso)' if self.crit=='gini' and self.simple else
+                   '  (0 bits = certeza, 1 bit = máxima incerteza)' if self.simple else ''))
+
+        # ── 3. Critério de parada ──────────────────────────────
+        puro    = len(np.unique(y)) == 1
+        fundo   = d >= self.max_d
+        pequeno = node.samples < self.min_s
+        if fundo or puro or pequeno:
+            node.value = Counter(y).most_common(1)[0][0]
+            razao = ('profundidade máxima atingida' if fundo else
+                     'nó já é puro — só uma classe' if puro else
+                     'poucas amostras para dividir')
+            self._log(f'')
+            self._log(f'  🍃 FOLHA  →  Decisão: Classe {node.value}', 'success')
+            self._log(f'     Motivo: {razao}', 'success')
+            return node
+
+        # ── 4. Busca do melhor split ───────────────────────────
+        n_splits = sum(len(np.unique(X[:, f])) - 1 for f in range(X.shape[1]))
+        self._log(f'')
+        self._log(f'  🔍 Buscando o melhor corte...')
         if self.simple:
-            self._log(f"🔍 Melhor pergunta: {feat_label} ≤ {t:.3f}?  (ganho = {g:.3f})", indent)
-        else:
-            self._log(f"🔍 Split: {feat_label} ≤ {t:.4f}  |  Gain = {g:.4f}", indent)
-        for s in st: self._log(s, indent)
-        n.feat, n.thresh, n.gain = f, t, g
-        feat_short = self._feat(f, short=True)
-        lm, rm = X[:,f]<=t, ~(X[:,f]<=t)
-        self._log(f"➡ {feat_short} ≤ {t:.3f}  →  {np.sum(lm)} amostras vão para a ESQUERDA", indent)
-        n.left = self._build(X[lm], y[lm], d+1)
-        self._log(f"➡ {feat_short} > {t:.3f}  →  {np.sum(rm)} amostras vão para a DIREITA", indent)
-        n.right = self._build(X[rm], y[rm], d+1)
-        return n
+            self._log(f'     (testamos ~{n_splits} combinações de feature × valor)')
+
+        f, t, g, lm, rm = self._best_split(X, y)
+        if f is None or g <= 1e-7:
+            node.value = Counter(y).most_common(1)[0][0]
+            self._log(f'  ⚠ Nenhum corte melhora a impureza  →  FOLHA: Classe {node.value}', 'warn')
+            return node
+
+        node.feat, node.thresh, node.gain = f, t, g
+        fn  = self._feat(f, short=False)
+        fsh = self._feat(f, short=True)
+
+        # ── 5. O que cada lado recebe ──────────────────────────
+        y_esq, y_dir = y[lm], y[rm]
+        n_esq, n_dir = lm.sum(), rm.sum()
+        imp_esq      = self._imp_value(y_esq)
+        imp_dir      = self._imp_value(y_dir)
+        w_esq        = n_esq / node.samples
+        w_dir        = n_dir / node.samples
+        imp_ponderada = w_esq * imp_esq + w_dir * imp_dir
+
+        self._log(f'')
+        self._log(f'  ✂ Melhor corte encontrado:  {fsh} ≤ {t:.3f}')
+        self._log(f'')
+        self._log(f'  O que cada lado recebe:')
+        self._log(f'')
+        self._log(f'  ← Esquerda  ({fsh} ≤ {t:.3f}):  {n_esq} amostras', 'split')
+        self._log(f'       {self._dist_str(y_esq)}', 'split')
+        self._log(f'       {crit} = {imp_esq:.3f}', 'split')
+        self._log(f'')
+        self._log(f'  → Direita   ({fsh} > {t:.3f}):  {n_dir} amostras', 'split')
+        self._log(f'       {self._dist_str(y_dir)}', 'split')
+        self._log(f'       {crit} = {imp_dir:.3f}', 'split')
+
+        # ── 6. Cálculo do ganho ────────────────────────────────
+        self._log(f'')
+        self._log(f'  📊 Calculando o Ganho de Informação:')
+        self._log(f'')
+        self._log(f'     Ganho = Impureza do pai  −  média ponderada dos filhos')
+        self._log(f'')
+        self._log(f'     Impureza do pai  = {imp:.3f}')
+        self._log(f'     Esquerda: peso {n_esq}/{node.samples} × {crit} {imp_esq:.3f} = {w_esq*imp_esq:.3f}')
+        self._log(f'     Direita:  peso {n_dir}/{node.samples} × {crit} {imp_dir:.3f} = {w_dir*imp_dir:.3f}')
+        self._log(f'     Média ponderada = {w_esq*imp_esq:.3f} + {w_dir*imp_dir:.3f} = {imp_ponderada:.3f}')
+        self._log(f'')
+        self._log(f'  ✅ Ganho = {imp:.3f} − {imp_ponderada:.3f} = {g:.3f}', 'success')
+        if self.simple:
+            self._log(f'     (quanto maior o ganho, melhor o corte)', 'success')
+
+        # ── 7. Divide e recursa ────────────────────────────────
+        self._log(f'')
+        self._log(f'  ✂ Dividindo: {n_esq} amostras  ←  {fsh} ≤ {t:.3f}  →  {n_dir} amostras')
+
+        node.left  = self._build(X[lm], y[lm], d + 1)
+        node.right = self._build(X[rm], y[rm], d + 1)
+        return node
 
     def fit(self, X, y):
         self.logs = []; self._nid = 0
-        crit_name = 'Gini' if self.crit == 'gini' else 'Entropia'
-        self._log(f"🚀 Iniciando treinamento  |  Critério: {crit_name}  |  Profundidade máx: {self.max_d}")
+        crit = 'Gini' if self.crit == 'gini' else 'Entropia'
+        self._log(f'🚀 Treinando  |  Critério: {crit}  |  Profundidade máxima: {self.max_d}')
+        self._log(f'   Dataset: {len(y)} amostras  |  {len(np.unique(y))} classes')
         self.root = self._build(X, y)
-        self._log(f"\n{'━'*30}", lvl='success')
-        self._log("✅ Treinamento concluído!", lvl='success')
+        self._log(f'')
+        self._log(f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success')
+        self._log(f'✅ Treinamento concluído!', 'success')
         return self.logs
 
-    def predict(self, X): return np.array([self._pred(x, self.root) for x in X])
+    def predict(self, X):
+        return np.array([self._pred(x, self.root) for x in X])
+
     def _pred(self, x, n):
         if n.is_leaf(): return n.value
-        return self._pred(x, n.left if x[n.feat]<=n.thresh else n.right)
+        return self._pred(x, n.left if x[n.feat] <= n.thresh else n.right)
 
     def get_metrics(self, X, y):
-        if not self.root: return {'accuracy':0,'max_depth':0,'total_nodes':0,'leaf_count':0}
-        acc = np.mean(self.predict(X)==y)
+        if not self.root:
+            return {'accuracy': 0, 'max_depth': 0, 'total_nodes': 0, 'leaf_count': 0}
+        acc = np.mean(self.predict(X) == y)
         def cnt(n):
-            if not n: return 0,0
-            if n.is_leaf(): return 1,1
-            tl,ll = cnt(n.left); tr,lr = cnt(n.right)
-            return 1+tl+tr, ll+lr
+            if not n: return 0, 0
+            if n.is_leaf(): return 1, 1
+            tl, ll = cnt(n.left); tr, lr = cnt(n.right)
+            return 1 + tl + tr, ll + lr
         tot, lv = cnt(self.root)
         md = max(nd.depth for nd in self._nodes())
-        return {'accuracy':float(acc),'max_depth':md,'total_nodes':tot,'leaf_count':lv}
+        return {'accuracy': float(acc), 'max_depth': md, 'total_nodes': tot, 'leaf_count': lv}
 
     def _nodes(self, n=None):
         if n is None: n = self.root
         if not n: return []
         r = [n]
-        if not n.is_leaf(): r.extend(self._nodes(n.left)); r.extend(self._nodes(n.right))
+        if not n.is_leaf():
+            r.extend(self._nodes(n.left))
+            r.extend(self._nodes(n.right))
         return r
 
 def plot_boundary(tree, X, y, res=150):
@@ -665,15 +733,20 @@ def generate_dataset(tp='moon', n=100, noise=0.15):
   /* Log */
   function log(msg, type='info', explain=null) {
     const el = $('calcLog');
-    // Detecta o tipo visual pela linha
     let cls = type;
-    if (msg.includes('━')) cls = 'sep';
-    else if (msg.includes('🌲') || msg.includes('Nó #')) cls = 'node-hdr';
-    else if (msg.includes('✅') || msg.includes('🍃')) cls = 'result';
-    else if (msg.includes('🔍') || msg.includes('➡') || msg.includes('≤') || msg.includes('>')) cls = 'split';
-    else if (msg.match(/^\s+(Classe|↳|p²|−p)/)) cls = 'sub';
-    else if (type === 'warn') cls = 'warn';
-    else if (type === 'error') cls = 'error';
+    const m = msg;
+
+    // Separadores e cabeçalhos de nó
+    if (m.includes('━'))                                          cls = 'sep';
+    else if (m.includes('🌲'))                                    cls = 'node-hdr';
+    // Resultados finais
+    else if (type === 'success' || m.includes('✅') || m.includes('🍃')) cls = 'result';
+    else if (type === 'warn'   || m.includes('⚠'))               cls = 'warn';
+    else if (type === 'error')                                    cls = 'error';
+    // Divisões esquerda/direita
+    else if (type === 'split'  || m.includes('←') || m.includes('→') || m.includes('✂')) cls = 'split';
+    // Linhas de sub-cálculo (indentadas com espaços)
+    else if (m.match(/^     /) && !m.includes('📐') && !m.includes('🔍') && !m.includes('📊')) cls = 'sub';
 
     const exp = (explain && App.simpleMode) ? `<span class="explain">💡 ${esc(explain)}</span>` : '';
     el.innerHTML += `<span class="${cls}">${esc(msg)}</span>${exp}\n`;
