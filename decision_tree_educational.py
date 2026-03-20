@@ -13,11 +13,11 @@ class Node:
 class EducationalDecisionTree:
     def __init__(self, criterion='gini', max_depth=3, min_samples_split=2, simple_mode=True):
         self.crit, self.max_d, self.min_s = criterion, max_depth, min_samples_split
-        self.simple = simple_mode  # ✅ Nome simples, valor padrão claro
+        self.simple = simple_mode 
         self.root, self._nid, self.logs = None, 0, []
     
     def _log(self, msg, indent=0, explain=None, lvl='info'):
-        e = {'msg': "  "*indent + msg, 'type': lvl}
+        e = {'msg': "  " * int(indent) + msg, 'type': lvl}  
         if explain and self.simple: e['explain'] = explain
         self.logs.append(e)
     
@@ -95,7 +95,8 @@ class EducationalDecisionTree:
     def fit(self, X, y):
         self.logs = []; self._nid = 0
         self._log("🚀 Treinando Decision Tree..."); self._log(f"⚙️ {self.crit}, max_depth={self.max_d}")
-        self.root = self._build(X, y); self._log("\n✅ Concluído!", 'success', "Árvore pronta para classificar!" if self.simple else None)
+        self.root = self._build(X, y)
+        self._log("\n✅ Concluído!", lvl='success', explain="Árvore pronta para classificar!" if self.simple else None)
         return self.logs
     
     def predict(self, X): return np.array([self._pred(x, self.root) for x in X])
