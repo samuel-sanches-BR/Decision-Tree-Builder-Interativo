@@ -111,7 +111,7 @@
 
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem 1.2rem; }
     .card-title {
-      font-size: 0.75rem; font-weight: 600; color: #64748b;
+      font-size: 0.75rem; font-weight: 600; color: #cbd5e1;
       text-transform: uppercase; letter-spacing: 0.07em;
       margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;
     }
@@ -119,7 +119,7 @@
     /* Controls */
     .ctrl-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
     .cg { display: flex; flex-direction: column; gap: 0.3rem; }
-    .cg label { font-size: 0.75rem; color: #64748b; }
+    .cg label { font-size: 0.75rem; color: #cbd5e1; }
     select, input[type=range] {
       background: #0f172a; border: 1px solid #334155; border-radius: 6px;
       color: #e2e8f0; padding: 0.38rem 0.6rem; font-size: 0.82rem; cursor: pointer;
@@ -153,7 +153,7 @@
       margin-top: 0.75rem;
       background: rgba(37,99,235,0.07); border-left: 3px solid #3b82f6;
       border-radius: 0 6px 6px 0; padding: 0.45rem 0.75rem;
-      font-size: 0.8rem; color: #94a3b8;
+      font-size: 0.8rem; color: #cbd5e1;
     }
     .ds-strip strong { color: #60a5fa; }
     .tag {
@@ -179,12 +179,12 @@
       display: flex; align-items: center; justify-content: center; overflow: hidden;
     }
     .plot-area img { width: 100%; height: 100%; object-fit: contain; display: block; }
-    .ph { color: #334155; font-size: 0.82rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
-    .ph .ico { font-size: 2rem; opacity: 0.35; }
+    .ph { color: #94a3b8; font-size: 0.82rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .ph .ico { font-size: 2rem; opacity: 0.6; }
 
     .tree-text {
       font-family: 'Cascadia Code','Fira Mono',monospace;
-      font-size: 0.7rem; color: #94a3b8;
+      font-size: 0.7rem; color: #cbd5e1;
       background: #0f172a; border: 1px solid #1e293b;
       padding: 0.7rem; border-radius: 8px;
       max-height: 250px; overflow: auto; white-space: pre; line-height: 1.65;
@@ -200,15 +200,20 @@
       background: #020617; border: 1px solid #1e293b; border-radius: 8px;
       padding: 0.75rem;
       font-family: 'Cascadia Code','Fira Mono',monospace; font-size: 0.73rem;
-      max-height: 240px; overflow-y: auto; white-space: pre-wrap; line-height: 1.7;
+      max-height: 240px; overflow-y: auto; white-space: pre-wrap; line-height: 1.8;
     }
     .calc-log::-webkit-scrollbar { width: 4px; }
     .calc-log::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
-    .calc-log .info    { color: #94a3b8; }
+    .calc-log .info    { color: #cbd5e1; }
     .calc-log .success { color: #4ade80; }
     .calc-log .warn    { color: #fbbf24; }
     .calc-log .error   { color: #f87171; }
     .calc-log .explain { color: #67e8f9; font-style: italic; display: block; padding-left: 1.2rem; }
+    .calc-log .sep     { color: #334155; display: block; }
+    .calc-log .node-hdr{ color: #a78bfa; font-weight: bold; }
+    .calc-log .result  { color: #4ade80; }
+    .calc-log .split   { color: #60a5fa; }
+    .calc-log .sub     { color: #94a3b8; padding-left: 0.8rem; display: block; }
 
     .right-col { display: flex; flex-direction: column; gap: 1rem; }
 
@@ -217,7 +222,7 @@
       background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
       padding: 0.6rem 0.5rem; text-align: center;
     }
-    .metric .ml { font-size: 0.68rem; color: #475569; margin-bottom: 0.15rem; }
+    .metric .ml { font-size: 0.68rem; color: #94a3b8; margin-bottom: 0.15rem; }
     .metric .mv {
       font-size: 1.35rem; font-weight: 700;
       background: linear-gradient(135deg, #60a5fa, #a78bfa);
@@ -229,7 +234,7 @@
       padding: 0.75rem; text-align: center; overflow-x: auto;
       font-size: 0.88rem; color: #c4b5fd;
     }
-    .formula-explain { font-size: 0.76rem; color: #64748b; margin-top: 0.5rem; line-height: 1.5; }
+    .formula-explain { font-size: 0.76rem; color: #94a3b8; margin-top: 0.5rem; line-height: 1.5; }
     .formula-explain strong { color: #a78bfa; }
   </style>
 </head>
@@ -395,7 +400,7 @@
 
 </div><!-- .page -->
 
-<!-- ═══════════════════════════ PYTHON (embedded) ═══════════════════════════ -->
+<!-- ═══════════════════════════ PYTHON (embedded, bug fixed) ═══════════════════════════ -->
 <script id="pyCode" type="text/x-python">
 """Decision Tree Educacional"""
 import numpy as np
@@ -415,33 +420,49 @@ class EducationalDecisionTree:
         self.simple = simple_mode
         self.root, self._nid, self.logs = None, 0, []
 
+    FEAT_NAMES = ['X₁ (horizontal)', 'X₂ (vertical)']
+    FEAT_SHORT  = ['X₁', 'X₂']
+
     def _log(self, msg, indent=0, explain=None, lvl='info'):
-        # BUG FIX: garantir que indent seja sempre int
         e = {'msg': "  " * int(indent) + msg, 'type': lvl}
         if explain and self.simple: e['explain'] = explain
         self.logs.append(e)
 
+    def _feat(self, f, short=False):
+        names = self.FEAT_SHORT if short else self.FEAT_NAMES
+        return names[f] if f < len(names) else f'X{f+1}'
+
     def _gini(self, y):
         if not len(y): return 0, []
         cnt, n, g = Counter(y), len(y), 1.0
-        steps = [f"📊 {n} amostras: {dict(cnt)}"]
-        if self.simple: steps.append("💡 Gini mede 'mistura' das classes")
-        for c, v in cnt.items():
-            p = v/n; g -= p**2
-            if self.simple: steps.append(f"  • Classe {c}: {p:.1%} → {p**2:.3f}")
-        steps.append(f"✅ Gini = {g:.3f}" + (" | 0=puro" if self.simple else ""))
+        classes_str = ', '.join(f'Classe {c}: {v}' for c, v in sorted(cnt.items()))
+        if self.simple:
+            steps = [f"📊 {classes_str}"]
+            for c, v in sorted(cnt.items()):
+                p = v/n; g -= p**2
+                steps.append(f"   Classe {c} → {v}/{n} = {p:.1%}  →  p² = {p**2:.3f}")
+            steps.append(f"✅ Gini = 1 − {' − '.join(f'{(v/n)**2:.3f}' for _,v in sorted(cnt.items()))} = {g:.3f}")
+        else:
+            for _, v in cnt.items(): p = v/n; g -= p**2
+            steps = [f"Gini = {g:.4f}   ({classes_str})"]
         return g, steps
 
     def _ent(self, y):
         if not len(y): return 0, []
         cnt, n, e = Counter(y), len(y), 0.0
-        steps = [f"📊 {n} amostras: {dict(cnt)}"]
-        if self.simple: steps.append("💡 Entropia: 0=certo, alto=incerto")
-        for c, v in cnt.items():
-            p = v/n
-            if p>0: t = -p*math.log2(p); e += t
-            if self.simple: steps.append(f"  • Classe {c}: {p:.1%} → {-p*math.log2(p) if p>0 else 0:.3f}")
-        steps.append(f"✅ Entropia = {e:.3f} bits" + (" | 0 bits=certo" if self.simple else ""))
+        classes_str = ', '.join(f'Classe {c}: {v}' for c, v in sorted(cnt.items()))
+        if self.simple:
+            steps = [f"📊 {classes_str}"]
+            for c, v in sorted(cnt.items()):
+                p = v/n
+                h = -p*math.log2(p) if p > 0 else 0; e += h
+                steps.append(f"   Classe {c} → {p:.1%}  →  −p·log₂(p) = {h:.3f}")
+            steps.append(f"✅ Entropia = {e:.3f} bits  (0 = certeza total)")
+        else:
+            for _, v in cnt.items():
+                p = v/n
+                if p > 0: e += -p*math.log2(p)
+            steps = [f"H = {e:.4f} bits   ({classes_str})"]
         return e, steps
 
     def _imp(self, y): return (self._gini if self.crit=='gini' else self._ent)(y)
@@ -452,10 +473,13 @@ class EducationalDecisionTree:
         il, _ = self._imp(yl); ir, _ = self._imp(yr)
         w = (nl/n)*il + (nr/n)*ir; g = pi - w
         if self.simple:
-            steps = ps + [f"\n🔀 Split: Esq={nl}(imp={il:.3f}), Dir={nr}(imp={ir:.3f})",
-                          f"✅ Ganho = {pi:.3f} - {w:.3f} = {g:.3f}", "💡 Maior ganho = melhor split!"]
+            steps = ps + [
+                f"   ↳ Esquerda: {nl} amostras  →  impureza {il:.3f}",
+                f"   ↳ Direita:  {nr} amostras  →  impureza {ir:.3f}",
+                f"✅ Ganho = {pi:.3f} − ({nl}/{n}×{il:.3f} + {nr}/{n}×{ir:.3f}) = {g:.3f}",
+            ]
         else:
-            steps = ps + [f"→ Gain = {pi:.4f} - ({nl}/{n})×{il:.4f} - ({nr}/{n})×{ir:.4f} = {g:.4f}"]
+            steps = ps + [f"Gain = {pi:.4f} − ({nl}/{n})·{il:.4f} − ({nr}/{n})·{ir:.4f} = {g:.4f}"]
         return g, steps
 
     def _best_split(self, X, y):
@@ -471,37 +495,50 @@ class EducationalDecisionTree:
     def _build(self, X, y, d=0):
         n = Node(depth=d, nid=self._nid); self._nid += 1
         n.samples, n.dist = len(y), dict(Counter(y)); n.imp, st = self._imp(y)
-        self._log(f"\n🌲 Nó #{n.nid} (nível {d})", d, "Grupo de amostras sendo analisado" if self.simple else None)
-        self._log(f"📦 {n.samples} amostras: {n.dist}", d, "Distribuição das classes" if self.simple else None)
-        for s in st: self._log(s, d)
+        indent = d
+        # ── Cabeçalho do nó ──
+        nivel = ['Raiz', 'Nível 1', 'Nível 2', 'Nível 3', 'Nível 4', 'Nível 5']
+        label = nivel[d] if d < len(nivel) else f'Nível {d}'
+        self._log(f"\n{'━'*30}", indent)
+        self._log(f"🌲 Nó #{n.nid}  [{label}]  —  {n.samples} amostras", indent)
+        # ── Impureza ──
+        crit_name = 'Gini' if self.crit == 'gini' else 'Entropia'
+        self._log(f"📐 Calculando {crit_name}:", indent)
+        for s in st: self._log(s, indent)
+        # ── Critério de parada ──
         if d>=self.max_d or len(np.unique(y))==1 or n.samples<self.min_s:
             n.value = Counter(y).most_common(1)[0][0]
-            self._log(f"✅ FOLHA: classe {n.value}", d, "Decisão final!" if self.simple else None)
+            reason = "profundidade máxima atingida" if d>=self.max_d else ("nó puro" if len(np.unique(y))==1 else "poucas amostras")
+            self._log(f"🍃 FOLHA  →  Classe {n.value}  ({reason})", indent, lvl='success')
             return n
+        # ── Melhor split ──
         f, t, g, st = self._best_split(X, y)
         if f is None or g<=1e-7:
             n.value = Counter(y).most_common(1)[0][0]
-            self._log(f"⚠ Sem split válido → FOLHA: {n.value}", d); return n
+            self._log(f"⚠ Sem ganho válido  →  FOLHA: Classe {n.value}", indent, lvl='warn')
+            return n
+        feat_label = self._feat(f, short=not self.simple)
         if self.simple:
-            self._log(f"🔍 Melhor: Feature[{f}] ≤ {t:.3f} | Ganho={g:.3f}", d, "Pergunta que melhor separa as classes")
+            self._log(f"🔍 Melhor pergunta: {feat_label} ≤ {t:.3f}?  (ganho = {g:.3f})", indent)
         else:
-            self._log(f"🔍 Split: X[{f}]≤{t:.3f} | Gain={g:.4f}", d)
-        for s in st: self._log(s, d)
+            self._log(f"🔍 Split: {feat_label} ≤ {t:.4f}  |  Gain = {g:.4f}", indent)
+        for s in st: self._log(s, indent)
         n.feat, n.thresh, n.gain = f, t, g
+        feat_short = self._feat(f, short=True)
         lm, rm = X[:,f]<=t, ~(X[:,f]<=t)
-        self._log(f"➡️ Esquerda (X[{f}]≤{t:.3f}):", d)
+        self._log(f"➡ {feat_short} ≤ {t:.3f}  →  {np.sum(lm)} amostras vão para a ESQUERDA", indent)
         n.left = self._build(X[lm], y[lm], d+1)
-        self._log(f"➡️ Direita (X[{f}]>{t:.3f}):", d)
+        self._log(f"➡ {feat_short} > {t:.3f}  →  {np.sum(rm)} amostras vão para a DIREITA", indent)
         n.right = self._build(X[rm], y[rm], d+1)
         return n
 
     def fit(self, X, y):
         self.logs = []; self._nid = 0
-        self._log("🚀 Treinando Decision Tree...")
-        self._log(f"⚙️ {self.crit}, max_depth={self.max_d}")
+        crit_name = 'Gini' if self.crit == 'gini' else 'Entropia'
+        self._log(f"🚀 Iniciando treinamento  |  Critério: {crit_name}  |  Profundidade máx: {self.max_d}")
         self.root = self._build(X, y)
-        # ✅ BUG FIX: usar kwargs para não confundir indent (int) com lvl (str)
-        self._log("\n✅ Concluído!", lvl='success', explain="Árvore pronta para classificar!" if self.simple else None)
+        self._log(f"\n{'━'*30}", lvl='success')
+        self._log("✅ Treinamento concluído!", lvl='success')
         return self.logs
 
     def predict(self, X): return np.array([self._pred(x, self.root) for x in X])
@@ -564,22 +601,24 @@ def _splits(ax,n,xm,xM,ym,yM,d=0):
 
 def tree_to_text(tree, simple=True):
     if not tree.root: return "Árvore não treinada."
+    feat_names = ['X₁', 'X₂', 'X₃', 'X₄']
+    def feat(f): return feat_names[f] if f < len(feat_names) else f'X{f+1}'
     lines = ["🌳 Árvore de Decisão:\n"]
     def trav(n,pfx="",last=True):
         if not n: return
         cn = "└── " if last else "├── "
         npfx = pfx + ("    " if last else "│   ")
         if n.is_leaf():
-            if simple: lines.append(f"{pfx}{cn}🍃 DECISÃO: Classe {n.value}\n{pfx}{'    'if last else'│   '}💡 {n.samples} amostras → classe {n.value}")
+            if simple: lines.append(f"{pfx}{cn}🍃 Classe {n.value}  ({n.samples} amostras)")
             else: lines.append(f"{pfx}{cn}🍃 Leaf: Class {n.value} (n={n.samples})")
         else:
-            gs = f" | 💰 {n.gain:.3f}" if n.gain else ""
-            if simple: lines.append(f"{pfx}{cn}🔀 Pergunta: X[{n.feat}] ≤ {n.thresh:.3f}?{gs}")
-            else: lines.append(f"{pfx}{cn}🔀 Split: X[{n.feat}]≤{n.thresh:.3f}{gs}")
+            gs = f"  ganho={n.gain:.3f}" if n.gain else ""
+            if simple: lines.append(f"{pfx}{cn}🔀 {feat(n.feat)} ≤ {n.thresh:.3f}?{gs}")
+            else: lines.append(f"{pfx}{cn}🔀 {feat(n.feat)} ≤ {n.thresh:.4f}  |  gain={n.gain:.4f}")
             if n.left: trav(n.left,npfx,n.right is None)
             if n.right: trav(n.right,npfx,True)
     trav(tree.root)
-    if simple: lines.append("\n🔑 🔀=pergunta | 🍃=decisão final | 💰=ganho (maior=melhor)")
+    if simple: lines.append("\n🔀 = pergunta  |  🍃 = classe final  |  ganho = qualidade do split")
     return "\n".join(lines)
 
 def generate_dataset(tp='moon', n=100, noise=0.15):
@@ -626,9 +665,18 @@ def generate_dataset(tp='moon', n=100, noise=0.15):
   /* Log */
   function log(msg, type='info', explain=null) {
     const el = $('calcLog');
-    const ico = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type] || 'ⓘ';
+    // Detecta o tipo visual pela linha
+    let cls = type;
+    if (msg.includes('━')) cls = 'sep';
+    else if (msg.includes('🌲') || msg.includes('Nó #')) cls = 'node-hdr';
+    else if (msg.includes('✅') || msg.includes('🍃')) cls = 'result';
+    else if (msg.includes('🔍') || msg.includes('➡') || msg.includes('≤') || msg.includes('>')) cls = 'split';
+    else if (msg.match(/^\s+(Classe|↳|p²|−p)/)) cls = 'sub';
+    else if (type === 'warn') cls = 'warn';
+    else if (type === 'error') cls = 'error';
+
     const exp = (explain && App.simpleMode) ? `<span class="explain">💡 ${esc(explain)}</span>` : '';
-    el.innerHTML += `<span class="${type}">[${ico}] ${esc(msg)}</span>${exp}\n`;
+    el.innerHTML += `<span class="${cls}">${esc(msg)}</span>${exp}\n`;
     el.scrollTop = el.scrollHeight;
   }
 
