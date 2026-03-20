@@ -1,327 +1,790 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌳 Decision Tree Builder</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.5; }
-        header { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; padding: 1rem 2rem; text-align: center; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 1rem; display: grid; gap: 1rem; }
-        .card { background: white; border-radius: 10px; border: 1px solid #e2e8f0; padding: 1rem; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
-        .controls { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
-        .control-group { display: flex; flex-direction: column; gap: 0.25rem; }
-        .control-group label { font-size: 0.85rem; color: #64748b; }
-        select, input { padding: 0.4rem; border: 1px solid #e2e8f0; border-radius: 6px; }
-        .btn { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; }
-        .btn-primary { background: #2563eb; color: white; }
-        .btn-primary:hover { background: #1d4ed8; }
-        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
-        .btn-group { display: flex; gap: 0.3rem; }
-        .btn-small { padding: 0.3rem 0.6rem; font-size: 0.85rem; border-radius: 5px; background: #f1f5f9; border: 1px solid #e2e8f0; }
-        .btn-small.active { background: #2563eb; color: white; border-color: #2563eb; }
-        .plot-area { width: 100%; height: 280px; background: #fafafa; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .plot-area img { max-width: 100%; max-height: 100%; }
-        .calc-log { background: #0f172a; color: #e2e8f0; padding: 0.75rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
-        .calc-log .info { color: #94a3b8; }
-        .calc-log .success { color: #22c55e; }
-        .calc-log .warn { color: #f59e0b; }
-        .calc-log .explain { color: #67e8f9; font-style: italic; display: block; margin-top: 0.2rem; }
-        .formula-box { background: #f1f5f9; padding: 0.75rem; border-radius: 8px; text-align: center; }
-        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
-        @media (max-width: 600px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
-        .metric { background: #f8fafc; padding: 0.6rem; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; }
-        .metric .label { font-size: 0.75rem; color: #64748b; }
-        .metric .value { font-size: 1.3rem; font-weight: 600; color: #2563eb; }
-        .tree-text { font-family: monospace; font-size: 0.75rem; background: #f8fafc; padding: 0.75rem; border-radius: 8px; max-height: 280px; overflow: auto; white-space: pre; }
-        #status { text-align: center; padding: 0.4rem; font-size: 0.9rem; color: #64748b; }
-        #status.loading { color: #2563eb; }
-        #status.error { color: #ef4444; }
-        .dataset-info { background: #f0f9ff; border-left: 3px solid #0ea5e9; padding: 0.6rem; border-radius: 0 6px 6px 0; font-size: 0.9rem; margin: 0.5rem 0; }
-        .dataset-info h4 { color: #0369a1; margin-bottom: 0.25rem; }
-        .feature-tag { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.8rem; margin: 0.1rem; }
-        .mode-toggle { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem 0; }
-        .mode-indicator { font-size: 0.8rem; padding: 0.15rem 0.4rem; border-radius: 4px; background: #dbeafe; color: #1e40af; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌳 Decision Tree Builder</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════ LOADING SCREEN ═══════════════ */
+    #loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 1.75rem;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+    }
+    #loader.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .loader-title {
+      font-size: 1.7rem; font-weight: 700;
+      background: linear-gradient(90deg, #60a5fa, #a78bfa, #60a5fa);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 2.5s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+
+    #tree-svg { width: 230px; height: 230px; overflow: visible; }
+
+    .trunk {
+      stroke: url(#treeGrad); stroke-width: 7; fill: none; stroke-linecap: round;
+      stroke-dasharray: 100; stroke-dashoffset: 100;
+      animation: draw 0.6s ease forwards 0.2s;
+    }
+    .branch { stroke: url(#treeGrad); fill: none; stroke-linecap: round; }
+    .b1l { stroke-width: 5; stroke-dasharray: 70; stroke-dashoffset: 70; animation: draw 0.45s ease forwards 0.9s; }
+    .b1r { stroke-width: 5; stroke-dasharray: 70; stroke-dashoffset: 70; animation: draw 0.45s ease forwards 1.1s; }
+    .b2l { stroke-width: 3.5; stroke-dasharray: 55; stroke-dashoffset: 55; animation: draw 0.4s ease forwards 1.6s; }
+    .b2r { stroke-width: 3.5; stroke-dasharray: 55; stroke-dashoffset: 55; animation: draw 0.4s ease forwards 1.8s; }
+    .b3l { stroke-width: 3.5; stroke-dasharray: 55; stroke-dashoffset: 55; animation: draw 0.4s ease forwards 2.0s; }
+    .b3r { stroke-width: 3.5; stroke-dasharray: 55; stroke-dashoffset: 55; animation: draw 0.4s ease forwards 2.2s; }
+    .b4l { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 2.5s; }
+    .b4r { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 2.6s; }
+    .b5l { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 2.7s; }
+    .b5r { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 2.8s; }
+    .b6l { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 2.9s; }
+    .b6r { stroke-width: 2; stroke-dasharray: 40; stroke-dashoffset: 40; animation: draw 0.3s ease forwards 3.0s; }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .leaf { opacity: 0; transform-origin: center; animation: pop 0.4s cubic-bezier(.18,.89,.32,1.28) forwards; }
+    .lf1 { fill: #4ade80; animation-delay: 3.2s; }
+    .lf2 { fill: #60a5fa; animation-delay: 3.3s; }
+    .lf3 { fill: #a78bfa; animation-delay: 3.4s; }
+    .lf4 { fill: #4ade80; animation-delay: 3.5s; }
+    .lf5 { fill: #f472b6; animation-delay: 3.6s; }
+    .lf6 { fill: #fbbf24; animation-delay: 3.7s; }
+    @keyframes pop { 0%{opacity:0;transform:scale(0)} 80%{transform:scale(1.25)} 100%{opacity:1;transform:scale(1)} }
+
+    .loader-bar-wrap { width: 210px; height: 5px; background: #1e293b; border-radius: 99px; overflow: hidden; }
+    .loader-bar { height: 100%; width: 0%; border-radius: 99px; background: linear-gradient(90deg, #2563eb, #7c3aed); transition: width 0.5s ease; }
+    .loader-msg { font-size: 0.82rem; color: #64748b; letter-spacing: 0.04em; animation: pulse-txt 1.8s ease-in-out infinite; text-align: center; }
+    @keyframes pulse-txt { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    /* ═══════════════ HEADER ═══════════════ */
+    header {
+      background: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%);
+      padding: 0.9rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .hdr-left h1 { font-size: 1.3rem; font-weight: 700; color: #fff; }
+    .hdr-left p  { font-size: 0.75rem; color: #a5b4fc; margin-top: 0.1rem; }
+    #status-pill {
+      font-size: 0.78rem; padding: 0.28rem 0.75rem;
+      border-radius: 99px; border: 1px solid #334155;
+      color: #94a3b8; background: rgba(0,0,0,0.3);
+      transition: all 0.3s; white-space: nowrap;
+    }
+    #status-pill.loading { color: #60a5fa; border-color: #2563eb; }
+    #status-pill.ready   { color: #4ade80; border-color: #16a34a; }
+    #status-pill.error   { color: #f87171; border-color: #dc2626; }
+
+    /* ═══════════════ PAGE ═══════════════ */
+    .page { max-width: 1280px; margin: 0 auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1rem 1.2rem; }
+    .card-title {
+      font-size: 0.75rem; font-weight: 600; color: #64748b;
+      text-transform: uppercase; letter-spacing: 0.07em;
+      margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;
+    }
+
+    /* Controls */
+    .ctrl-bar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; }
+    .cg { display: flex; flex-direction: column; gap: 0.3rem; }
+    .cg label { font-size: 0.75rem; color: #64748b; }
+    select, input[type=range] {
+      background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+      color: #e2e8f0; padding: 0.38rem 0.6rem; font-size: 0.82rem; cursor: pointer;
+    }
+    select:focus { outline: none; border-color: #3b82f6; }
+    .sep { width: 1px; background: #334155; align-self: stretch; margin: 0 0.15rem; }
+
+    .btn-grp { display: flex; gap: 0.25rem; }
+    .btn-ds, .btn-mode {
+      padding: 0.32rem 0.6rem; font-size: 0.78rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid #334155; transition: all 0.18s;
+    }
+    .btn-ds   { background: #0f172a; color: #94a3b8; }
+    .btn-ds:hover   { border-color: #60a5fa; color: #60a5fa; }
+    .btn-ds.active  { background: #1e3a8a; border-color: #3b82f6; color: #93c5fd; }
+    .btn-mode { background: #0f172a; color: #94a3b8; }
+    .btn-mode:hover  { border-color: #a78bfa; color: #a78bfa; }
+    .btn-mode.active { background: #2e1065; border-color: #7c3aed; color: #c4b5fd; }
+
+    .btn-train {
+      padding: 0.48rem 1.4rem; border: none; border-radius: 8px; cursor: pointer;
+      font-weight: 600; font-size: 0.88rem;
+      background: linear-gradient(135deg, #2563eb, #7c3aed);
+      color: white; box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .btn-train:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.5); }
+    .btn-train:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .ds-strip {
+      margin-top: 0.75rem;
+      background: rgba(37,99,235,0.07); border-left: 3px solid #3b82f6;
+      border-radius: 0 6px 6px 0; padding: 0.45rem 0.75rem;
+      font-size: 0.8rem; color: #94a3b8;
+    }
+    .ds-strip strong { color: #60a5fa; }
+    .tag {
+      display: inline-block;
+      background: rgba(59,130,246,0.12); color: #93c5fd;
+      border: 1px solid rgba(59,130,246,0.2);
+      padding: 0.08rem 0.4rem; border-radius: 4px;
+      font-size: 0.72rem; margin: 0 0.1rem;
+    }
+
+    /* Plots row */
+    .plots-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+    @media(max-width:900px){ .plots-row { grid-template-columns: 1fr 1fr; } }
+    @media(max-width:580px){ .plots-row { grid-template-columns: 1fr; } }
+
+    .plot-area {
+      width: 100%; aspect-ratio: 4/3;
+      background: #0f172a; border-radius: 8px; border: 1px solid #1e293b;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .plot-area img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .ph { color: #334155; font-size: 0.82rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; }
+    .ph .ico { font-size: 2rem; opacity: 0.35; }
+
+    .tree-text {
+      font-family: 'Cascadia Code','Fira Mono',monospace;
+      font-size: 0.7rem; color: #94a3b8;
+      background: #0f172a; border: 1px solid #1e293b;
+      padding: 0.7rem; border-radius: 8px;
+      max-height: 250px; overflow: auto; white-space: pre; line-height: 1.65;
+    }
+    .tree-text::-webkit-scrollbar { width: 4px; }
+    .tree-text::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    /* Bottom row */
+    .bottom-row { display: grid; grid-template-columns: 1fr 320px; gap: 1rem; }
+    @media(max-width:800px){ .bottom-row { grid-template-columns: 1fr; } }
+
+    .calc-log {
+      background: #020617; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 0.75rem;
+      font-family: 'Cascadia Code','Fira Mono',monospace; font-size: 0.73rem;
+      max-height: 240px; overflow-y: auto; white-space: pre-wrap; line-height: 1.7;
+    }
+    .calc-log::-webkit-scrollbar { width: 4px; }
+    .calc-log::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+    .calc-log .info    { color: #475569; }
+    .calc-log .success { color: #4ade80; }
+    .calc-log .warn    { color: #fbbf24; }
+    .calc-log .error   { color: #f87171; }
+    .calc-log .explain { color: #67e8f9; font-style: italic; display: block; padding-left: 1.2rem; }
+
+    .right-col { display: flex; flex-direction: column; gap: 1rem; }
+
+    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .metric {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 0.6rem 0.5rem; text-align: center;
+    }
+    .metric .ml { font-size: 0.68rem; color: #475569; margin-bottom: 0.15rem; }
+    .metric .mv {
+      font-size: 1.35rem; font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .formula-box {
+      background: #0f172a; border: 1px solid #1e293b; border-radius: 8px;
+      padding: 0.75rem; text-align: center; overflow-x: auto;
+      font-size: 0.88rem; color: #c4b5fd;
+    }
+    .formula-explain { font-size: 0.76rem; color: #64748b; margin-top: 0.5rem; line-height: 1.5; }
+    .formula-explain strong { color: #a78bfa; }
+  </style>
 </head>
 <body>
-    <header>
-        <h1>🌳 Decision Tree Builder</h1>
-        <p style="opacity:0.9">Aprenda árvores de decisão com explicações claras</p>
-    </header>
 
-    <div class="container">
-        <!-- Controles -->
-        <section class="card">
-            <div class="controls">
-                <div class="control-group">
-                    <label>Critério:</label>
-                    <select id="criterion">
-                        <option value="gini">Gini</option>
-                        <option value="entropy">Entropia</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>Profundidade: <span id="depthVal">3</span></label>
-                    <input type="range" id="maxDepth" min="1" max="6" value="3">
-                </div>
-                <div class="control-group">
-                    <label>Dataset:</label>
-                    <div class="btn-group">
-                        <button class="btn btn-small active" data-ds="moon">🌙 Moons</button>
-                        <button class="btn btn-small" data-ds="circle">⭕ Circles</button>
-                        <button class="btn btn-small" data-ds="linear">📈 Linear</button>
-                    </div>
-                </div>
-                <button id="trainBtn" class="btn btn-primary">🔄 Treinar</button>
-            </div>
-            
-            <div id="datasetInfo" class="dataset-info">
-                <h4>📊 Two Moons</h4>
-                <p>Dados em formato de meias-luas. Classes se entrelaçam — desafio para árvores!</p>
-                <p><strong>Features:</strong> <span class="feature-tag">X₁: horizontal</span> <span class="feature-tag">X₂: vertical</span></p>
-            </div>
-            
-            <div class="mode-toggle">
-                <span style="font-size:0.85rem;">Explicações:</span>
-                <button class="btn btn-small active" id="modeSimple">🎓 Simples</button>
-                <button class="btn btn-small" id="modeAdvanced">⚙️ Técnico</button>
-                <span class="mode-indicator" id="modeLabel">Linguagem acessível</span>
-            </div>
-            
-            <div id="status">Carregando...</div>
-        </section>
+<!-- ═══════════════════════════ LOADING SCREEN ═══════════════════════════ -->
+<div id="loader">
+  <div class="loader-title">🌳 Decision Tree Builder</div>
 
-        <!-- Dados antes do treino -->
-        <section class="card">
-            <h3>👁️ Dados (Pré-treinamento)</h3>
-            <div id="plotData" class="plot-area"></div>
-            <div style="font-size:0.8rem;color:#64748b;margin-top:0.3rem;text-align:center">Distribuição das classes</div>
-            <div id="dataStats" style="margin-top:0.5rem;font-size:0.85rem"></div>
-        </section>
+  <svg id="tree-svg" viewBox="0 0 220 215" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="treeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%"   stop-color="#2563eb"/>
+        <stop offset="50%"  stop-color="#7c3aed"/>
+        <stop offset="100%" stop-color="#a78bfa"/>
+      </linearGradient>
+    </defs>
+    <!-- Trunk -->
+    <line class="trunk" x1="110" y1="205" x2="110" y2="130"/>
+    <!-- L1 branches -->
+    <line class="branch b1l" x1="110" y1="148" x2="68"  y2="113"/>
+    <line class="branch b1r" x1="110" y1="148" x2="152" y2="113"/>
+    <!-- L2 from left branch -->
+    <line class="branch b2l" x1="68"  y1="113" x2="42"  y2="82"/>
+    <line class="branch b2r" x1="68"  y1="113" x2="92"  y2="82"/>
+    <!-- L2 from right branch -->
+    <line class="branch b3l" x1="152" y1="113" x2="128" y2="82"/>
+    <line class="branch b3r" x1="152" y1="113" x2="178" y2="82"/>
+    <!-- L3 tips -->
+    <line class="branch b4l" x1="42"  y1="82" x2="26"  y2="58"/>
+    <line class="branch b4r" x1="42"  y1="82" x2="58"  y2="58"/>
+    <line class="branch b5l" x1="92"  y1="82" x2="78"  y2="58"/>
+    <line class="branch b5r" x1="92"  y1="82" x2="108" y2="58"/>
+    <line class="branch b6l" x1="178" y1="82" x2="162" y2="58"/>
+    <line class="branch b6r" x1="178" y1="82" x2="194" y2="58"/>
+    <!-- Leaves -->
+    <circle class="leaf lf1" cx="26"  cy="50" r="9"/>
+    <circle class="leaf lf2" cx="58"  cy="50" r="9"/>
+    <circle class="leaf lf3" cx="78"  cy="50" r="9"/>
+    <circle class="leaf lf4" cx="108" cy="50" r="9"/>
+    <circle class="leaf lf5" cx="162" cy="50" r="9"/>
+    <circle class="leaf lf6" cx="194" cy="50" r="9"/>
+  </svg>
 
-        <!-- Resultados pós-treinamento -->
-        <section class="grid-2">
-            <div class="card">
-                <h3>📊 Fronteira de Decisão</h3>
-                <div id="plotBoundary" class="plot-area">
-                    <div style="color:#64748b;text-align:center">Treine para ver</div>
-                </div>
-            </div>
-            <div class="card">
-                <h3>🌲 Estrutura da Árvore</h3>
-                <div id="treeViz" class="tree-text">Treine para ver...</div>
-            </div>
-        </section>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:0.6rem">
+    <div class="loader-bar-wrap"><div class="loader-bar" id="loaderBar"></div></div>
+    <div class="loader-msg" id="loaderMsg">Inicializando ambiente Python...</div>
+  </div>
+</div>
 
-        <!-- Cálculos -->
-        <section class="grid-2">
-            <div class="card">
-                <h3>📐 Cálculos</h3>
-                <div id="calcLog" class="calc-log">Treine para ver os cálculos passo a passo...</div>
-            </div>
-            <div class="card">
-                <h3>🧮 Fórmula</h3>
-                <div id="formulaBox" class="formula-box">\[ Gini(D) = 1 - \sum p_i^2 \]</div>
-                <div id="formulaExplain" style="font-size:0.85rem;color:#475569;margin-top:0.5rem">
-                    <strong>Significado:</strong> Mede a "mistura" das classes. 0 = puro, alto = misturado.
-                </div>
-            </div>
-        </section>
+<!-- ═══════════════════════════ HEADER ═══════════════════════════ -->
+<header>
+  <div class="hdr-left">
+    <h1>🌳 Decision Tree Builder</h1>
+    <p>Aprenda árvores de decisão com explicações passo a passo</p>
+  </div>
+  <div id="status-pill">⏳ Carregando</div>
+</header>
 
-        <!-- Métricas -->
-        <section class="card">
-            <h3>📈 Métricas</h3>
-            <div class="metrics">
-                <div class="metric"><span class="label">Acurácia</span><span class="value" id="acc">-</span></div>
-                <div class="metric"><span class="label">Profundidade</span><span class="value" id="depth">-</span></div>
-                <div class="metric"><span class="label">Nós</span><span class="value" id="nodes">-</span></div>
-                <div class="metric"><span class="label">Folhas</span><span class="value" id="leaves">-</span></div>
-            </div>
-        </section>
+<!-- ═══════════════════════════ PAGE ═══════════════════════════ -->
+<div class="page">
+
+  <!-- Controls -->
+  <div class="card">
+    <div class="card-title">⚙️ Configurações</div>
+    <div class="ctrl-bar">
+      <div class="cg">
+        <label>Critério</label>
+        <select id="criterion">
+          <option value="gini">Gini</option>
+          <option value="entropy">Entropia</option>
+        </select>
+      </div>
+      <div class="cg">
+        <label>Profundidade: <strong id="depthVal" style="color:#60a5fa">3</strong></label>
+        <input type="range" id="maxDepth" min="1" max="6" value="3" style="width:100px">
+      </div>
+      <div class="sep"></div>
+      <div class="cg">
+        <label>Dataset</label>
+        <div class="btn-grp">
+          <button class="btn-ds active" data-ds="moon">🌙 Moons</button>
+          <button class="btn-ds"        data-ds="circle">⭕ Circles</button>
+          <button class="btn-ds"        data-ds="linear">📈 Linear</button>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="cg">
+        <label>Explicações</label>
+        <div class="btn-grp">
+          <button class="btn-mode active" id="modeSimple">🎓 Simples</button>
+          <button class="btn-mode"        id="modeAdvanced">⚙️ Técnico</button>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <button id="trainBtn" class="btn-train" disabled>▶ Treinar</button>
     </div>
+    <div id="dsStrip" class="ds-strip">
+      <strong>Two Moons 🌙</strong> — Meias-luas entrelaçadas, desafio não-linear.
+      <span class="tag">X₁: horizontal</span><span class="tag">X₂: vertical</span>
+    </div>
+  </div>
 
-    <script>
-        const App = { pyodide: null, X: null, y: null, loaded: false, simpleMode: true };
-        const $ = id => document.getElementById(id);
-        const escapeHtml = s => s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-        
-        const log = (msg, type='info', explain=null) => {
-            const el = $('calcLog');
-            const prefix = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type];
-            const exp = explain && App.simpleMode ? `<span class="explain">💡 ${explain}</span>` : '';
-            el.innerHTML += `<span class="${type}">[${prefix}] ${escapeHtml(msg)}</span>${exp}<br>`;
-            el.scrollTop = el.scrollHeight;
-        };
-        
-        const setStatus = (msg, cls='') => { const el = $('status'); el.textContent = msg; el.className = cls; };
+  <!-- 3 plots -->
+  <div class="plots-row">
+    <div class="card">
+      <div class="card-title">👁️ Dados (pré-treino)</div>
+      <div id="plotData" class="plot-area">
+        <div class="ph"><span class="ico">📊</span><span>Aguardando...</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Fronteira de Decisão</div>
+      <div id="plotBoundary" class="plot-area">
+        <div class="ph"><span class="ico">🗺️</span><span>Treine para ver</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌲 Estrutura da Árvore</div>
+      <div id="treeViz" class="tree-text">Treine para ver...</div>
+    </div>
+  </div>
 
-        const DATASETS = {
-            moon: { name: "Two Moons 🌙", desc: "Meias-luas entrelaçadas — desafio não-linear", tip: "Observe como as classes se misturam!" },
-            circle: { name: "Circles ⭕", desc: "Círculos concêntricos — problema radial", tip: "A árvore precisará de múltiplos splits!" },
-            linear: { name: "Linear 📈", desc: "Separável por uma reta — caso ideal", tip: "Um split já pode ter alto ganho!" }
-        };
+  <!-- Bottom: log + right panel -->
+  <div class="bottom-row">
+    <div class="card">
+      <div class="card-title">📐 Cálculos passo a passo</div>
+      <div id="calcLog" class="calc-log"><span class="info">Treine para ver os cálculos...</span></div>
+    </div>
+    <div class="right-col">
+      <div class="card">
+        <div class="card-title">📈 Métricas</div>
+        <div class="metrics-grid">
+          <div class="metric"><div class="ml">Acurácia</div><div class="mv" id="acc">—</div></div>
+          <div class="metric"><div class="ml">Profundidade</div><div class="mv" id="depth">—</div></div>
+          <div class="metric"><div class="ml">Nós totais</div><div class="mv" id="nodes">—</div></div>
+          <div class="metric"><div class="ml">Folhas</div><div class="mv" id="leaves">—</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🧮 Fórmula ativa</div>
+        <div id="formulaBox" class="formula-box">\[ Gini(D) = 1 - \sum p_i^2 \]</div>
+        <div id="formulaExplain" class="formula-explain">
+          <strong>Significado:</strong> Mede a "mistura" das classes. 0 = puro, alto = misturado.
+        </div>
+      </div>
+    </div>
+  </div>
 
-        async function init() {
-            $('maxDepth').oninput = e => $('depthVal').textContent = e.target.value;
-            document.querySelectorAll('[data-ds]').forEach(btn => {
-                btn.onclick = async () => {
-                    document.querySelectorAll('[data-ds]').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    await loadDataset(btn.dataset.ds);
-                };
-            });
-            $('trainBtn').onclick = trainTree;
-            $('modeSimple').onclick = () => setMode(true);
-            $('modeAdvanced').onclick = () => setMode(false);
-            $('criterion').onchange = updateFormula;
-            
-            await initPyodide();
-            await loadDataset('moon');
-            if (window.renderMathInElement) renderMathInElement($('formulaBox'), {delimiters: [{left:"\\[",right:"\\]",display:true}]});
-        }
+</div><!-- .page -->
 
-        function setMode(simple) {
-            App.simpleMode = simple;
-            $('modeSimple').classList.toggle('active', simple);
-            $('modeAdvanced').classList.toggle('active', !simple);
-            $('modeLabel').textContent = simple ? 'Linguagem acessível' : 'Detalhes técnicos';
-            updateFormula();
-        }
+<!-- ═══════════════════════════ PYTHON (embedded, bug fixed) ═══════════════════════════ -->
+<script id="pyCode" type="text/x-python">
+"""Decision Tree Educacional"""
+import numpy as np
+from collections import Counter
+import math
 
-        async function initPyodide() {
-            try {
-                setStatus('Inicializando Pyodide...', 'loading');
-                App.pyodide = await globalThis.loadPyodide({ indexURL: "https://cdn.jsdelivr.net/pyodide/v0.24.1/full/" });
-                await App.pyodide.loadPackage(['numpy', 'matplotlib']);
-                await App.pyodide.runPythonAsync(`import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt`);
-                
-                const response = await fetch('decision_tree_educational.py?v=' + Date.now());
-                const pyCode = await response.text();
-                await App.pyodide.runPythonAsync(pyCode);
-                
-                App.loaded = true;
-                setStatus('Pronto! ✓', '');
-                log('✅ Ambiente carregado', 'success');
-            } catch (err) {
-                console.error(err);
-                setStatus('Erro ao carregar', 'error');
-                log(`❌ ${err.message}`, 'error');
-            }
-        }
+class Node:
+    def __init__(self, depth=0, nid=0):
+        self.depth, self.nid = depth, nid
+        self.feat, self.thresh, self.left, self.right, self.value = None, None, None, None, None
+        self.samples, self.imp, self.dist, self.gain = 0, None, {}, None
+    def is_leaf(self): return self.value is not None
 
-        async function loadDataset(type) {
-            if (!App.loaded) return;
-            const info = DATASETS[type];
-            $('datasetInfo').innerHTML = `<h4>📊 ${info.name}</h4><p>${info.desc}</p><p><strong>Features:</strong> <span class="feature-tag">X₁</span> <span class="feature-tag">X₂</span></p><p><small>💡 ${info.tip}</small></p>`;
-            
-            try {
-                log(`\n📦 Carregando '${type}'...`);
-                const result = await App.pyodide.runPythonAsync(`
-                    import json, numpy as np
-                    _X, _y = generate_dataset('${type}')
-                    stats = {'n': len(_y), 'classes': {int(c): int(np.sum(_y==c)) for c in np.unique(_y)}}
-                    json.dumps({'X': _X.tolist(), 'y': _y.tolist(), 'stats': stats})
-                `);
-                const data = JSON.parse(result);
-                App.X = data.X; App.y = data.y;
-                await plotData(data.X, data.y);
-                $('dataStats').innerHTML = `<strong>${data.stats.n}</strong> amostras | ${Object.entries(data.stats.classes).map(([c,n])=>`Classe ${c}: ${n}`).join(' | ')}`;
-                log(`✓ ${data.stats.n} amostras carregadas`, 'success');
-                $('treeViz').textContent = 'Treine para ver...';
-                $('plotBoundary').innerHTML = '<div style="color:#64748b;text-align:center">Treine para ver</div>';
-                ['acc','depth','nodes','leaves'].forEach(id => $(id).textContent = '-');
-            } catch (err) { log(`❌ ${err.message}`, 'error'); }
-        }
+class EducationalDecisionTree:
+    def __init__(self, criterion='gini', max_depth=3, min_samples_split=2, simple_mode=True):
+        self.crit, self.max_d, self.min_s = criterion, max_depth, min_samples_split
+        self.simple = simple_mode
+        self.root, self._nid, self.logs = None, 0, []
 
-        async function plotData(X, y) {
-            try {
-                const b64 = await App.pyodide.runPythonAsync(`
-                    import numpy as np, matplotlib.pyplot as plt, io, base64
-                    X, y = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
-                    fig, ax = plt.subplots(figsize=(4.5,3.5), dpi=100)
-                    for cls in np.unique(y):
-                        m = y == cls
-                        ax.scatter(X[m,0], X[m,1], label=f'Classe {int(cls)}', edgecolors='white', s=30)
-                    ax.set_xlabel('X₁'); ax.set_ylabel('X₂'); ax.legend(fontsize=7); ax.grid(alpha=0.3)
-                    ax.set_title('Dados')
-                    buf = io.BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight'); plt.close(fig)
-                    base64.b64encode(buf.getvalue()).decode('utf-8')
-                `);
-                // ✅ Converter PyProxy para string JavaScript
-                const b64Str = typeof b64 === 'string' ? b64 : (b64.toString ? b64.toString() : String(b64));
-                if (b64Str && b64Str.length > 100) {
-                    $('plotData').innerHTML = `<img src="data:image/png;base64,${b64Str}" alt="Dados">`;
-                } else {
-                    $('plotData').innerHTML = '<div style="color:#ef4444">❌ Erro ao gerar imagem</div>';
-                }
-            } catch (err) {
-                console.error(err);
-                $('plotData').innerHTML = `<div style="color:#ef4444;text-align:center;padding:1rem">❌ Erro: ${escapeHtml(err.message)}</div>`;
-            }
-        }
+    def _log(self, msg, indent=0, explain=None, lvl='info'):
+        # BUG FIX: garantir que indent seja sempre int
+        e = {'msg': "  " * int(indent) + msg, 'type': lvl}
+        if explain and self.simple: e['explain'] = explain
+        self.logs.append(e)
 
-        async function trainTree() {
-            if (!App.loaded || !App.X) return;
-            $('trainBtn').disabled = true; $('trainBtn').textContent = '🔄 Treinando...';
-            $('calcLog').innerHTML = ''; setStatus('Treinando...', 'loading');
-            
-            try {
-                const p = { criterion: $('criterion').value, max_depth: parseInt($('maxDepth').value), simple: App.simpleMode ? 1 : 0 };
-                const logs = await App.pyodide.runPythonAsync(`
-                    import numpy as np, json
-                    _tree = EducationalDecisionTree(criterion='${p.criterion}', max_depth=${p.max_depth}, simple_mode=${p.simple})
-                    logs = _tree.fit(_X, _y)
-                    _metrics = _tree.get_metrics(_X, _y)
-                    json.dumps({'logs': logs, 'metrics': _metrics})
-                `);
-                const result = JSON.parse(logs);
-                result.logs.forEach(e => { const {msg,type,explain} = typeof e==='object'?e:{msg:e,type:'info'}; log(msg,type,explain); });
-                await Promise.all([plotBoundary(), plotTree(), updateMetrics(result.metrics), updateFormula()]);
-                setStatus('Concluído! ✓', '');
-            } catch (err) { console.error(err); log(`❌ ${err.message}`, 'error'); setStatus('Erro', 'error'); }
-            finally { $('trainBtn').disabled = false; $('trainBtn').textContent = '🔄 Treinar'; }
-        }
+    def _gini(self, y):
+        if not len(y): return 0, []
+        cnt, n, g = Counter(y), len(y), 1.0
+        steps = [f"📊 {n} amostras: {dict(cnt)}"]
+        if self.simple: steps.append("💡 Gini mede 'mistura' das classes")
+        for c, v in cnt.items():
+            p = v/n; g -= p**2
+            if self.simple: steps.append(f"  • Classe {c}: {p:.1%} → {p**2:.3f}")
+        steps.append(f"✅ Gini = {g:.3f}" + (" | 0=puro" if self.simple else ""))
+        return g, steps
 
-        async function plotBoundary() {
-            try {
-                const b64 = await App.pyodide.runPythonAsync(`plot_boundary(_tree, _X, _y)`);
-                const b64Str = typeof b64 === 'string' ? b64 : (b64.toString ? b64.toString() : String(b64));
-                if (b64Str && b64Str.length > 100) {
-                    $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${b64Str}" alt="Fronteira" style="max-width:100%;height:auto;">`;
-                }
-            } catch (err) { $('plotBoundary').innerHTML = `<div style="color:#ef4444;text-align:center">❌ ${escapeHtml(err.message)}</div>`; }
-        }
+    def _ent(self, y):
+        if not len(y): return 0, []
+        cnt, n, e = Counter(y), len(y), 0.0
+        steps = [f"📊 {n} amostras: {dict(cnt)}"]
+        if self.simple: steps.append("💡 Entropia: 0=certo, alto=incerto")
+        for c, v in cnt.items():
+            p = v/n
+            if p>0: t = -p*math.log2(p); e += t
+            if self.simple: steps.append(f"  • Classe {c}: {p:.1%} → {-p*math.log2(p) if p>0 else 0:.3f}")
+        steps.append(f"✅ Entropia = {e:.3f} bits" + (" | 0 bits=certo" if self.simple else ""))
+        return e, steps
 
-        async function plotTree() {
-            try {
-                const text = await App.pyodide.runPythonAsync(`tree_to_text(_tree, simple=${App.simpleMode})`);
-                $('treeViz').textContent = typeof text === 'string' ? text : text.toString();
-            } catch (err) { $('treeViz').textContent = `❌ ${err.message}`; }
-        }
+    def _imp(self, y): return (self._gini if self.crit=='gini' else self._ent)(y)
 
-        function updateMetrics(m) {
-            $('acc').textContent = (m.accuracy*100).toFixed(1)+'%'; $('depth').textContent = m.max_depth;
-            $('nodes').textContent = m.total_nodes; $('leaves').textContent = m.leaf_count;
-        }
+    def _gain(self, y, yl, yr):
+        pi, ps = self._imp(y); n, nl, nr = len(y), len(yl), len(yr)
+        if nl==0 or nr==0: return -1, ps+["⚠ Split inválido"]
+        il, _ = self._imp(yl); ir, _ = self._imp(yr)
+        w = (nl/n)*il + (nr/n)*ir; g = pi - w
+        if self.simple:
+            steps = ps + [f"\n🔀 Split: Esq={nl}(imp={il:.3f}), Dir={nr}(imp={ir:.3f})",
+                          f"✅ Ganho = {pi:.3f} - {w:.3f} = {g:.3f}", "💡 Maior ganho = melhor split!"]
+        else:
+            steps = ps + [f"→ Gain = {pi:.4f} - ({nl}/{n})×{il:.4f} - ({nr}/{n})×{ir:.4f} = {g:.4f}"]
+        return g, steps
 
-        function updateFormula() {
-            const crit = $('criterion').value;
-            const f = { gini: { tex: `Gini(D) = 1 - \\\\sum p_i^2`, simple: "Mede a 'mistura' das classes. 0 = puro.", tech: "Gini = 1 - Σpᵢ², onde pᵢ é proporção da classe i." },
-                        entropy: { tex: `Entropia(D) = -\\\\sum p_i \\\\log_2(p_i)`, simple: "Mede 'desordem'. 0 = certeza, alto = incerteza.", tech: "Entropia = -Σpᵢ·log₂(pᵢ), medida em bits." } };
-            $('formulaBox').innerHTML = `\\[${f[crit].tex}\\]`;
-            $('formulaExplain').innerHTML = `<strong>Significado:</strong> ${App.simpleMode ? f[crit].simple : f[crit].tech}`;
-            if (window.renderMathInElement) renderMathInElement($('formulaBox'), {delimiters: [{left:"\\[",right:"\\]",display:true}]});
-        }
+    def _best_split(self, X, y):
+        bg, bf, bt, bs = -1, None, None, []
+        for f in range(X.shape[1]):
+            for t in np.unique(X[:,f]):
+                l, r = X[:,f]<=t, ~(X[:,f]<=t)
+                if np.sum(l)==0 or np.sum(r)==0: continue
+                g, s = self._gain(y, y[l], y[r])
+                if g > bg: bg, bf, bt, bs = g, f, t, s
+        return bf, bt, bg, bs
 
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+    def _build(self, X, y, d=0):
+        n = Node(depth=d, nid=self._nid); self._nid += 1
+        n.samples, n.dist = len(y), dict(Counter(y)); n.imp, st = self._imp(y)
+        self._log(f"\n🌲 Nó #{n.nid} (nível {d})", d, "Grupo de amostras sendo analisado" if self.simple else None)
+        self._log(f"📦 {n.samples} amostras: {n.dist}", d, "Distribuição das classes" if self.simple else None)
+        for s in st: self._log(s, d)
+        if d>=self.max_d or len(np.unique(y))==1 or n.samples<self.min_s:
+            n.value = Counter(y).most_common(1)[0][0]
+            self._log(f"✅ FOLHA: classe {n.value}", d, "Decisão final!" if self.simple else None)
+            return n
+        f, t, g, st = self._best_split(X, y)
+        if f is None or g<=1e-7:
+            n.value = Counter(y).most_common(1)[0][0]
+            self._log(f"⚠ Sem split válido → FOLHA: {n.value}", d); return n
+        if self.simple:
+            self._log(f"🔍 Melhor: Feature[{f}] ≤ {t:.3f} | Ganho={g:.3f}", d, "Pergunta que melhor separa as classes")
+        else:
+            self._log(f"🔍 Split: X[{f}]≤{t:.3f} | Gain={g:.4f}", d)
+        for s in st: self._log(s, d)
+        n.feat, n.thresh, n.gain = f, t, g
+        lm, rm = X[:,f]<=t, ~(X[:,f]<=t)
+        self._log(f"➡️ Esquerda (X[{f}]≤{t:.3f}):", d)
+        n.left = self._build(X[lm], y[lm], d+1)
+        self._log(f"➡️ Direita (X[{f}]>{t:.3f}):", d)
+        n.right = self._build(X[rm], y[rm], d+1)
+        return n
+
+    def fit(self, X, y):
+        self.logs = []; self._nid = 0
+        self._log("🚀 Treinando Decision Tree...")
+        self._log(f"⚙️ {self.crit}, max_depth={self.max_d}")
+        self.root = self._build(X, y)
+        # ✅ BUG FIX: usar kwargs para não confundir indent (int) com lvl (str)
+        self._log("\n✅ Concluído!", lvl='success', explain="Árvore pronta para classificar!" if self.simple else None)
+        return self.logs
+
+    def predict(self, X): return np.array([self._pred(x, self.root) for x in X])
+    def _pred(self, x, n):
+        if n.is_leaf(): return n.value
+        return self._pred(x, n.left if x[n.feat]<=n.thresh else n.right)
+
+    def get_metrics(self, X, y):
+        if not self.root: return {'accuracy':0,'max_depth':0,'total_nodes':0,'leaf_count':0}
+        acc = np.mean(self.predict(X)==y)
+        def cnt(n):
+            if not n: return 0,0
+            if n.is_leaf(): return 1,1
+            tl,ll = cnt(n.left); tr,lr = cnt(n.right)
+            return 1+tl+tr, ll+lr
+        tot, lv = cnt(self.root)
+        md = max(nd.depth for nd in self._nodes())
+        return {'accuracy':float(acc),'max_depth':md,'total_nodes':tot,'leaf_count':lv}
+
+    def _nodes(self, n=None):
+        if n is None: n = self.root
+        if not n: return []
+        r = [n]
+        if not n.is_leaf(): r.extend(self._nodes(n.left)); r.extend(self._nodes(n.right))
+        return r
+
+def plot_boundary(tree, X, y, res=150):
+    import matplotlib.pyplot as plt, io, base64
+    if X.shape[1]!=2:
+        fig,ax = plt.subplots(figsize=(4,3)); ax.text(0.5,0.5,"Apenas 2D",ha='center'); ax.axis('off')
+        buf=io.BytesIO(); fig.savefig(buf,format='png'); plt.close(fig)
+        return base64.b64encode(buf.getvalue()).decode('utf-8')
+    xm,xM = X[:,0].min()-0.5, X[:,0].max()+0.5
+    ym,yM = X[:,1].min()-0.5, X[:,1].max()+0.5
+    xx,yy = np.meshgrid(np.linspace(xm,xM,res), np.linspace(ym,yM,res))
+    Z = tree.predict(np.c_[xx.ravel(),yy.ravel()]).reshape(xx.shape)
+    fig,ax = plt.subplots(figsize=(4.5,3.5),dpi=100)
+    fig.patch.set_facecolor('#0f172a'); ax.set_facecolor('#0f172a')
+    ax.contourf(xx,yy,Z,alpha=0.25,cmap='coolwarm',levels=15)
+    colors = ['#60a5fa','#f472b6','#4ade80','#fbbf24']
+    for c in np.unique(y):
+        ax.scatter(X[y==c,0],X[y==c,1],label=f'Classe {int(c)}',
+                   edgecolors='white',s=30,color=colors[int(c)%len(colors)])
+    _splits(ax,tree.root,xm,xM,ym,yM)
+    ax.set_xlabel('X₁',color='#94a3b8'); ax.set_ylabel('X₂',color='#94a3b8')
+    ax.tick_params(colors='#475569'); ax.spines[:].set_color('#334155')
+    ax.legend(fontsize=7,facecolor='#1e293b',labelcolor='#94a3b8',edgecolor='#334155')
+    ax.grid(alpha=0.2,color='#334155')
+    buf=io.BytesIO(); fig.savefig(buf,format='png',bbox_inches='tight',facecolor='#0f172a'); plt.close(fig)
+    return base64.b64encode(buf.getvalue()).decode('utf-8')
+
+def _splits(ax,n,xm,xM,ym,yM,d=0):
+    if not n or n.is_leaf() or d>10: return
+    if n.feat==0:
+        ax.axvline(n.thresh,color='#64748b',ls='--',alpha=0.6)
+        _splits(ax,n.left,xm,n.thresh,ym,yM,d+1); _splits(ax,n.right,n.thresh,xM,ym,yM,d+1)
+    else:
+        ax.axhline(n.thresh,color='#64748b',ls='--',alpha=0.6)
+        _splits(ax,n.left,xm,xM,ym,n.thresh,d+1); _splits(ax,n.right,xm,xM,n.thresh,yM,d+1)
+
+def tree_to_text(tree, simple=True):
+    if not tree.root: return "Árvore não treinada."
+    lines = ["🌳 Árvore de Decisão:\n"]
+    def trav(n,pfx="",last=True):
+        if not n: return
+        cn = "└── " if last else "├── "
+        npfx = pfx + ("    " if last else "│   ")
+        if n.is_leaf():
+            if simple: lines.append(f"{pfx}{cn}🍃 DECISÃO: Classe {n.value}\n{pfx}{'    'if last else'│   '}💡 {n.samples} amostras → classe {n.value}")
+            else: lines.append(f"{pfx}{cn}🍃 Leaf: Class {n.value} (n={n.samples})")
+        else:
+            gs = f" | 💰 {n.gain:.3f}" if n.gain else ""
+            if simple: lines.append(f"{pfx}{cn}🔀 Pergunta: X[{n.feat}] ≤ {n.thresh:.3f}?{gs}")
+            else: lines.append(f"{pfx}{cn}🔀 Split: X[{n.feat}]≤{n.thresh:.3f}{gs}")
+            if n.left: trav(n.left,npfx,n.right is None)
+            if n.right: trav(n.right,npfx,True)
+    trav(tree.root)
+    if simple: lines.append("\n🔑 🔀=pergunta | 🍃=decisão final | 💰=ganho (maior=melhor)")
+    return "\n".join(lines)
+
+def generate_dataset(tp='moon', n=100, noise=0.15):
+    np.random.seed(42)
+    if tp=='moon':
+        nh=n//2; ang=np.linspace(0,np.pi,nh)
+        x1=np.column_stack([np.cos(ang)+np.random.normal(0,noise,nh), np.sin(ang)+np.random.normal(0,noise,nh)])
+        x2=np.column_stack([np.cos(ang)+1+np.random.normal(0,noise,nh), -np.sin(ang)+0.5+np.random.normal(0,noise,nh)])
+        return np.vstack([x1,x2]).astype(float), np.array([0]*nh+[1]*nh).astype(int)
+    elif tp=='circle':
+        nh=n//2; ang=np.random.uniform(0,2*np.pi,nh)
+        x1=np.column_stack([np.cos(ang)+np.random.normal(0,noise,nh), np.sin(ang)+np.random.normal(0,noise,nh)])
+        x2=np.column_stack([2*np.cos(ang)+np.random.normal(0,noise,nh), 2*np.sin(ang)+np.random.normal(0,noise,nh)])
+        return np.vstack([x1,x2]).astype(float), np.array([0]*nh+[1]*nh).astype(int)
+    else:
+        X=np.random.randn(n,2); return X.astype(float), (X[:,0]+X[:,1]>0).astype(int)
+</script>
+
+<!-- ═══════════════════════════ APP ═══════════════════════════ -->
+<script>
+  const App = { pyodide: null, X: null, y: null, loaded: false, simpleMode: true };
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  const DS_META = {
+    moon:   { name:'Two Moons 🌙',  desc:'Meias-luas entrelaçadas — desafio não-linear.' },
+    circle: { name:'Circles ⭕',     desc:'Círculos concêntricos — problema radial.'      },
+    linear: { name:'Linear 📈',      desc:'Separável por uma reta — caso ideal.'          }
+  };
+
+  /* Loader */
+  function setLoader(pct, msg) {
+    $('loaderBar').style.width = pct + '%';
+    $('loaderMsg').textContent  = msg;
+  }
+  function hideLoader() {
+    $('loader').classList.add('fade-out');
+    setTimeout(() => { $('loader').style.display = 'none'; }, 900);
+  }
+
+  /* Status */
+  const setStatus = (msg, cls='') => { $('status-pill').textContent = msg; $('status-pill').className = cls; };
+
+  /* Log */
+  function log(msg, type='info', explain=null) {
+    const el = $('calcLog');
+    const ico = {info:'ⓘ', success:'✓', warn:'⚠', error:'✗'}[type] || 'ⓘ';
+    const exp = (explain && App.simpleMode) ? `<span class="explain">💡 ${esc(explain)}</span>` : '';
+    el.innerHTML += `<span class="${type}">[${ico}] ${esc(msg)}</span>${exp}\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* Init */
+  async function init() {
+    $('maxDepth').oninput = e => $('depthVal').textContent = e.target.value;
+    document.querySelectorAll('.btn-ds').forEach(btn => {
+      btn.onclick = async () => {
+        document.querySelectorAll('.btn-ds').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        await loadDataset(btn.dataset.ds);
+      };
+    });
+    $('trainBtn').onclick    = trainTree;
+    $('modeSimple').onclick  = () => setMode(true);
+    $('modeAdvanced').onclick= () => setMode(false);
+    $('criterion').onchange  = updateFormula;
+
+    await initPyodide();
+    if (App.loaded) await loadDataset('moon');
+    if (window.renderMathInElement)
+      renderMathInElement($('formulaBox'), {delimiters:[{left:'\\[',right:'\\]',display:true}]});
+  }
+
+  async function initPyodide() {
+    try {
+      setLoader(10, 'Baixando Pyodide (pode demorar alguns segundos)...');
+      App.pyodide = await globalThis.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/' });
+
+      setLoader(50, 'Carregando numpy e matplotlib...');
+      await App.pyodide.loadPackage(['numpy','matplotlib']);
+
+      setLoader(75, 'Configurando backend matplotlib...');
+      await App.pyodide.runPythonAsync(`import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt`);
+
+      setLoader(90, 'Carregando Decision Tree...');
+      await App.pyodide.runPythonAsync($('pyCode').textContent);
+
+      setLoader(100, '✓ Pronto!');
+      App.loaded = true;
+      setStatus('✓ Pronto', 'ready');
+      $('trainBtn').disabled = false;
+      setTimeout(hideLoader, 700);
+    } catch(err) {
+      console.error(err);
+      setStatus('✗ Erro ao carregar', 'error');
+      $('loaderMsg').textContent = '❌ ' + err.message;
+      $('loaderMsg').style.color = '#f87171';
+      $('loaderMsg').style.animation = 'none';
+    }
+  }
+
+  async function loadDataset(type) {
+    if (!App.loaded) return;
+    const meta = DS_META[type];
+    try {
+      const raw = await App.pyodide.runPythonAsync(`
+        import json, numpy as np
+        _X, _y = generate_dataset('${type}')
+        stats = {'n': len(_y), 'classes': {int(c): int(np.sum(_y==c)) for c in np.unique(_y)}}
+        json.dumps({'X': _X.tolist(), 'y': _y.tolist(), 'stats': stats})
+      `);
+      const data = JSON.parse(raw);
+      App.X = data.X; App.y = data.y;
+      const clsStr = Object.entries(data.stats.classes).map(([c,n])=>`Classe ${c}: ${n}`).join(' | ');
+      $('dsStrip').innerHTML = `<strong>${meta.name}</strong> — ${meta.desc} <span class="tag">X₁</span><span class="tag">X₂</span> &nbsp;<span style="color:#475569">${data.stats.n} amostras | ${clsStr}</span>`;
+      await plotData(data.X, data.y);
+      $('treeViz').textContent = 'Treine para ver...';
+      $('plotBoundary').innerHTML = '<div class="ph"><span class="ico">🗺️</span><span>Treine para ver</span></div>';
+      ['acc','depth','nodes','leaves'].forEach(id => $(id).textContent = '—');
+    } catch(err) { log(`❌ ${err.message}`, 'error'); }
+  }
+
+  async function plotData(X, y) {
+    try {
+      const b64 = await App.pyodide.runPythonAsync(`
+        import numpy as np, matplotlib.pyplot as plt, io, base64
+        _Xp, _yp = np.array(${JSON.stringify(X)}), np.array(${JSON.stringify(y)})
+        fig, ax = plt.subplots(figsize=(4.5,3.5), dpi=100)
+        fig.patch.set_facecolor('#0f172a'); ax.set_facecolor('#0f172a')
+        colors = ['#60a5fa','#f472b6','#4ade80','#fbbf24']
+        for cls in np.unique(_yp):
+            m = _yp == cls
+            ax.scatter(_Xp[m,0], _Xp[m,1], label=f'Classe {int(cls)}',
+                       edgecolors='white', s=30, color=colors[int(cls)%len(colors)])
+        ax.set_xlabel('X₁', color='#94a3b8'); ax.set_ylabel('X₂', color='#94a3b8')
+        ax.tick_params(colors='#475569'); ax.spines[:].set_color('#334155')
+        ax.legend(fontsize=7, facecolor='#1e293b', labelcolor='#94a3b8', edgecolor='#334155')
+        ax.grid(alpha=0.2, color='#334155')
+        buf = io.BytesIO()
+        fig.savefig(buf, format='png', bbox_inches='tight', facecolor='#0f172a')
+        plt.close(fig)
+        base64.b64encode(buf.getvalue()).decode('utf-8')
+      `);
+      const s = typeof b64 === 'string' ? b64 : b64.toString();
+      if (s.length > 100) $('plotData').innerHTML = `<img src="data:image/png;base64,${s}" alt="Dados">`;
+    } catch(err) {
+      $('plotData').innerHTML = `<div class="ph"><span>❌ ${esc(err.message)}</span></div>`;
+    }
+  }
+
+  async function trainTree() {
+    if (!App.loaded || !App.X) return;
+    $('trainBtn').disabled = true; $('trainBtn').textContent = '⏳ Treinando...';
+    $('calcLog').innerHTML = '';
+    setStatus('⏳ Treinando...', 'loading');
+    try {
+      const p = {
+        crit:  $('criterion').value,
+        depth: parseInt($('maxDepth').value),
+        simple: App.simpleMode ? 'True' : 'False'
+      };
+      const raw = await App.pyodide.runPythonAsync(`
+        import numpy as np, json
+        _tree = EducationalDecisionTree(criterion='${p.crit}', max_depth=${p.depth}, simple_mode=${p.simple})
+        logs = _tree.fit(_X, _y)
+        _metrics = _tree.get_metrics(_X, _y)
+        json.dumps({'logs': logs, 'metrics': _metrics})
+      `);
+      const result = JSON.parse(raw);
+      result.logs.forEach(e => {
+        const {msg, type, explain} = typeof e === 'object' ? e : {msg: e, type:'info'};
+        log(msg, type||'info', explain||null);
+      });
+      await Promise.all([plotBoundary(), plotTree()]);
+      updateMetrics(result.metrics);
+      updateFormula();
+      setStatus('✓ Concluído', 'ready');
+    } catch(err) {
+      console.error(err);
+      log(`❌ ${err.message}`, 'error');
+      setStatus('✗ Erro', 'error');
+    } finally {
+      $('trainBtn').disabled = false; $('trainBtn').textContent = '▶ Treinar';
+    }
+  }
+
+  async function plotBoundary() {
+    try {
+      const b64 = await App.pyodide.runPythonAsync(`plot_boundary(_tree, _X, _y)`);
+      const s = typeof b64 === 'string' ? b64 : b64.toString();
+      if (s.length > 100) $('plotBoundary').innerHTML = `<img src="data:image/png;base64,${s}" alt="Fronteira">`;
+    } catch(err) { $('plotBoundary').innerHTML = `<div class="ph"><span>❌ ${esc(err.message)}</span></div>`; }
+  }
+
+  async function plotTree() {
+    try {
+      const text = await App.pyodide.runPythonAsync(`tree_to_text(_tree, simple=${App.simpleMode ? 'True':'False'})`);
+      $('treeViz').textContent = typeof text === 'string' ? text : text.toString();
+    } catch(err) { $('treeViz').textContent = `❌ ${err.message}`; }
+  }
+
+  function updateMetrics(m) {
+    $('acc').textContent    = (m.accuracy*100).toFixed(1) + '%';
+    $('depth').textContent  = m.max_depth;
+    $('nodes').textContent  = m.total_nodes;
+    $('leaves').textContent = m.leaf_count;
+  }
+
+  function updateFormula() {
+    const crit = $('criterion').value;
+    const f = {
+      gini:    { tex:'Gini(D) = 1 - \\sum p_i^2',         simple:"Mede a 'mistura' das classes. 0 = puro, alto = misturado.", tech:"Gini = 1 − Σpᵢ², onde pᵢ é a proporção da classe i." },
+      entropy: { tex:'H(D) = -\\sum p_i \\log_2(p_i)', simple:"Mede 'desordem'. 0 = certeza total.",                        tech:"Entropia = −Σpᵢ·log₂(pᵢ), medida em bits." }
+    };
+    $('formulaBox').innerHTML    = `\\[${f[crit].tex}\\]`;
+    $('formulaExplain').innerHTML= `<strong>Significado:</strong> ${App.simpleMode ? f[crit].simple : f[crit].tech}`;
+    if (window.renderMathInElement)
+      renderMathInElement($('formulaBox'), {delimiters:[{left:'\\[',right:'\\]',display:true}]});
+  }
+
+  function setMode(simple) {
+    App.simpleMode = simple;
+    $('modeSimple').classList.toggle('active', simple);
+    $('modeAdvanced').classList.toggle('active', !simple);
+    updateFormula();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
 </body>
 </html>
